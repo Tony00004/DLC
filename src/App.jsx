@@ -19,10 +19,10 @@ const COLORS = {
 
 // ─── Mock users DB ───────────────────────────────────────────────────────────
 const USERS = [
-  { id: 1,  name: "Mario Dumont",    email: "mdupont",    password: "1234",  roles: [] },
+  { id: 1,  name: "Marie Dupont",    email: "mdupont",    password: "1234",  roles: [] },
   { id: 2,  name: "Jean Martin",     email: "jmartin",    password: "1234",  roles: ["A"] },
   { id: 8,  name: "Pierre Lefebvre", email: "plefebvre",  password: "1234",  roles: ["A"] },
-  { id: 3,  name: "Sophie Bernard",  email: "sbernard",   password: "1234",  roles: ["B"] },
+  { id: 3,  name: "Sophie Bernard",  email: "sbernard",   password: "1234",  roles: ["B", "D"] },
   { id: 4,  name: "Luc Tremblay",    email: "ltremblay",  password: "1234",  roles: ["C1"] },
   { id: 6,  name: "Paula Gagnon",    email: "pgagnon",    password: "1234",  roles: ["C2"] },
   { id: 7,  name: "Michel Caron",    email: "mcaron",     password: "1234",  roles: ["C3"] },
@@ -350,12 +350,30 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
         </div>
       )}
 
+      {/* Section "Demandes du système" pour le vérificateur (B) ou admin (D) */}
+      {(user.roles.includes("B") || user.roles.includes("D")) && (
+        <div style={{ ...S.card, marginBottom: 20, background: "linear-gradient(135deg, #f0f8f4 0%, #e8f5ee 100%)", border: "1px solid #c3e6d4" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h3 style={{ ...S.sectionTitle, margin: "0 0 4px", color: COLORS.vertFonce }}>Demandes du système</h3>
+              <p style={{ margin: 0, fontSize: 13, color: COLORS.gris }}>
+                Consultez l'historique complet de toutes les demandes du système.
+              </p>
+            </div>
+            <button style={{ ...S.btnPrimary, padding: "8px 18px", fontSize: 13, whiteSpace: "nowrap" }}
+              onClick={() => setView("history")}>
+              Voir l'historique complet
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* My requests list */}
       <div style={S.card}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h3 style={{ ...S.sectionTitle, margin: 0 }}>Mes demandes récentes</h3>
           <button style={{ ...S.btn, fontSize: 13, padding: "6px 14px" }} onClick={() => setView("history")}>
-            Historique complet
+            Mon historique
           </button>
         </div>
         {myRequests.length === 0 ? (
@@ -464,7 +482,8 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
   const authorBlockedByApproval = isAuthor && request.status === "acceptee" && ["achat","activite"].includes(request.type);
   const canApproverEdit = (canActRole("A") || isAdmin) && ["soumise","acceptee"].includes(request.status);
   const approverBlockedByVerif = (canActRole("A") && !isAdmin) && ["validee","commandee","traitee"].includes(request.status);
-  const canEdit = (canActRole("A") || canActRole("B") || canActRole("C1") || canActRole("C2") || canActRole("C3") || isAdmin)
+  // Le magasinier (C2) ne peut PAS modifier — seulement consulter et commenter
+  const canEdit = (canActRole("A") || canActRole("B") || canActRole("C1") || canActRole("C3") || isAdmin)
                   && !["traitee","refusee","annulee"].includes(request.status);
   const canCancel = isAuthor && ["soumise","acceptee"].includes(request.status);
 
@@ -835,22 +854,71 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                       Marquer items en commande
                     </button>
                   )}
-                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
-                    Marquer comme complétée
-                  </button>
+                  {request.type === "achat" && request.formData?._rows && (() => {
+                    const rows = request.formData._rows;
+                    const tousRecus = rows.length > 0 && rows.every(r => r.recu);
+                    const certainsRecus = rows.some(r => r.recu) && !tousRecus;
+                    return (
+                      <>
+                        {tousRecus && (
+                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                            Confirmer réception complète et compléter
+                          </button>
+                        )}
+                        {certainsRecus && (
+                          <button style={btnOrange} onClick={() => {
+                            if (window.confirm("Confirmer la réception partielle ?\\n\\nLa demande restera dans la file d'attente.")) {
+                              if (onUpdateItems) onUpdateItems(request.id, rows);
+                            }
+                          }}>
+                            Confirmer réception partielle
+                          </button>
+                        )}
+                        {!tousRecus && !certainsRecus && (
+                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                            Marquer comme complétée
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                  {request.type === "activite" && (
+                    <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                      Marquer comme complétée
+                    </button>
+                  )}
                   <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
                 </>
               )}
 
               {/* ── Magasinier (C2) — achat validée ou en commande ── */}
-              {canMagasinier && !canSecretary && (
-                <>
-                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
-                    Confirmer réception et compléter
-                  </button>
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
-                </>
-              )}
+              {canMagasinier && !canSecretary && (() => {
+                const rows = request.formData?._rows || [];
+                const tousRecus = rows.length > 0 && rows.every(r => r.recu);
+                const certainsRecus = rows.some(r => r.recu) && !tousRecus;
+                return (
+                  <>
+                    {tousRecus ? (
+                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                        Confirmer réception complète et compléter
+                      </button>
+                    ) : certainsRecus ? (
+                      <button style={btnOrange} onClick={() => {
+                        if (window.confirm("Confirmer la réception partielle ?\\n\\nLa demande restera dans la file d'attente.")) {
+                          if (onUpdateItems) onUpdateItems(request.id, rows);
+                        }
+                      }}>
+                        Confirmer réception partielle
+                      </button>
+                    ) : (
+                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                        Confirmer réception et compléter
+                      </button>
+                    )}
+                    <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                  </>
+                );
+              })()}
 
               {/* ── Concierge (C3) — réquisition interne ── */}
               {canConcierge && (
@@ -867,15 +935,8 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                 <span style={{ width: 1, height: 32, background: "#e5e7eb", display: "inline-block", margin: "0 4px" }} />
               )}
 
-              {/* ── Modifier : Approbateur (A) sur soumise/acceptée ── */}
-              {canApproverEdit && (
-                <button style={btnJaune} onClick={() => onEdit(request, null, "")}>
-                  Modifier la demande
-                </button>
-              )}
-
-              {/* ── Modifier : Vérificateur (B) / Exécutant (C) / Admin ── */}
-              {canEdit && !canActRole("A") && (
+              {/* ── Modifier la demande (un seul bouton, logique unifiée) ── */}
+              {(canApproverEdit || (canEdit && !canApproverEdit)) && (
                 <button style={btnJaune} onClick={() => onEdit(request, null, "")}>
                   Modifier la demande
                 </button>
@@ -941,7 +1002,37 @@ function QueueView({ role, label, requests, allRequests, user, onAction, onBack,
 
   return (
     <div style={S.content}>
-      <button style={{ ...S.btn, marginBottom: 20 }} onClick={onBack}>← Retour</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <button style={S.btn} onClick={onBack}>← Retour</button>
+        {(role === "A" || role === "B") && (
+          <button onClick={() => {
+            var CATS = { achat: "Demande d'achat de matériel", activite: "Demande d'activité et de sortie", requisition: "Demande de réquisition interne" };
+            var STATUTS = { soumise:"Soumise", acceptee:"Approuvée", validee:"Vérifiée", validee_C2:"Attribuée — Magasinier", validee_C3:"Attribuée — Concierge", commandee:"En commande", traitee:"Traitée", refusee:"Refusée", annulee:"Annulée" };
+            var headers = ["Numéro", "Catégorie", "Titre", "Demandeur", "Statut", "Prix total", "Mon action", "Date action"];
+            var allRows = filtered.concat(traitees);
+            var rows = allRows.map(function(r) {
+              var monAction = r.history ? [...r.history].reverse().find(function(h) { return h.by === user.name; }) : null;
+              return [
+                r.requestNumber || r.id,
+                CATS[r.type] || r.type, r.title, r.authorName,
+                STATUTS[r.status] || r.status,
+                (r.formData && r.formData.total) ? r.formData.total : (r.type === "requisition" ? "N/A" : "—"),
+                monAction ? (STATUTS[monAction.status] || monAction.status) : "En attente",
+                monAction ? monAction.date : "",
+              ];
+            });
+            var esc = function(v) { var s = String(v == null ? "" : v); return (s.includes(";") || s.includes('"') || s.includes("\n")) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+            var csv = ["sep=;", headers.join(";")].concat(rows.map(function(r) { return r.map(esc).join(";"); })).join("\n");
+            var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a"); a.href = url;
+            a.download = "DLC_" + roleDisplay + "_" + new Date().toISOString().slice(0,10) + ".csv";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+          }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: "#16a34a", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
+            Exporter vers Excel ({filtered.length + traitees.length})
+          </button>
+        )}
+      </div>
       <div style={S.card}>
         <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>
           File d'attente — {roleDisplay}
@@ -1266,7 +1357,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                     <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
                       <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
                         <div style={{ position: "relative", width: 44, height: 24 }}
-                          onClick={() => onUpdateActiveForms && onUpdateActiveForms(prev => ({ ...prev, [f.key]: !isActive }))}>
+                          onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(function(prev) { var next = Object.assign({}, prev); next[f.key] = !isActive; return next; }); }}>
                           <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? f.color : "#d1d5db", transition: "background 0.2s", cursor: "pointer" }} />
                           <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                         </div>
@@ -1771,6 +1862,7 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
     passionAutres: fd.passionAutres || "",
     obligatoire: fd.obligatoire || "",
     autresClientele: fd.autresClientele || "",
+    directionResponsable: fd.directionResponsable || "",
     coutEleve: fd.coutEleve || "", nbEleves: fd.nbEleves || "",
     coutAdulte: fd.coutAdulte || "", nbAdultes: fd.nbAdultes || "",
     coutLiberation: fd.coutLiberation || COUT_LIBERATION_DEFAULT, nbPeriodes: fd.nbPeriodes || "",
@@ -1837,6 +1929,7 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
       passionAutres: form.passionAutres,
       obligatoire: form.obligatoire,
       autresClientele: form.autresClientele,
+      directionResponsable: form.directionResponsable,
       coutEleve: form.coutEleve, nbEleves: form.nbEleves,
       coutAdulte: form.coutAdulte, nbAdultes: form.nbAdultes,
       coutLiberation: form.coutLiberation, nbPeriodes: form.nbPeriodes,
@@ -2071,7 +2164,16 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
               <input style={{ ...S.input, marginTop: 8, maxWidth: 420 }} placeholder="Précisez la matière" value={form.autreMatiere} onChange={(e) => setForm({ ...form, autreMatiere: e.target.value })} />
             )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0 22px", alignItems: "start", marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 22px", alignItems: "start", marginBottom: 16 }}>
+            <div>
+              <label style={S.label}>Direction responsable<span style={{ color: COLORS.rouge }}> *</span></label>
+              <select style={S.select} value={form.directionResponsable} onChange={e => setForm({ ...form, directionResponsable: e.target.value })}>
+                <option value="">Sélectionnez</option>
+                {allUsers.filter(u => u.roles.includes("A") && !u.roles.includes("D")).map(u => (
+                  <option key={u.id} value={u.name}>{u.name}</option>
+                ))}
+              </select>
+            </div>
             <div>
               <label style={S.label}>Liste des groupes concernés<span style={{ color: COLORS.rouge }}> *</span></label>
               <input style={S.input} placeholder="Ex: 101, 102, 203..." value={form.groupes} onChange={(e) => setForm({ ...form, groupes: e.target.value })} />
@@ -2758,7 +2860,7 @@ function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode, initi
     if (form.dateRealisation < today) { setError("La date de réalisation doit être aujourd'hui ou dans le futur."); return; }
     if (!form.localConcerne.trim()) { setError("Le local concerné est obligatoire."); return; }
     setError("");
-    const formDataOut = { ...form, typeServiceFinal: form.typeService === "Autres (précisez)" ? form.autreType : form.typeService };
+    const formDataOut = { ...form, drawing: form.drawing || [], typeServiceFinal: form.typeService === "Autres (précisez)" ? form.autreType : form.typeService };
     if (editMode) {
       onSubmit(formDataOut);
     } else {
@@ -3662,7 +3764,7 @@ function HistoryView({ user, requests, setView, setSelectedRequest }) {
             <table style={S.table}>
               <thead>
                 <tr>
-                  {["Nº demande", "Catégorie", "Titre", "Demandeur", "Approbateur", "Date", "Statut", "Prix total", ""].map((h) => (
+                  {["Nº demande", "Catégorie", "Titre", "Demandeur", "Date", "Statut", "Approbateur", "Prix total", ""].map((h) => (
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
@@ -4238,7 +4340,7 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} activeForms={activeForms} onUpdateActiveForms={setActiveForms} />;
     }
     return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} />;
   }
