@@ -274,6 +274,7 @@ function LoginScreen({ onLogin }) {
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
+  const [selectedDate, setSelectedDate] = useState(null);
   const myRequests = requests.filter((r) => r.authorId === user.id);
   const pendingA  = requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
@@ -371,15 +372,18 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
                     <div key={j} style={{ textAlign: "center", fontSize: 9.5, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j}</div>
                   ))}
                   {cells.map((c) => (
-                    <div key={c.iso} style={{
-                      borderRadius: 5,
-                      padding: "4px 2px",
-                      textAlign: "center",
-                      minHeight: 26,
-                      border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
-                      background: !c.inMonth ? "#f6f7f9" : c.hasSortie ? "#d1f5e0" : c.isWeekend ? "#e5e7eb" : "#fff",
-                      opacity: c.inMonth ? 1 : 0.45,
-                    }}>
+                    <div key={c.iso}
+                      onClick={() => { if (c.hasSortie && c.inMonth) setSelectedDate(c.iso); }}
+                      style={{
+                        borderRadius: 5,
+                        padding: "4px 2px",
+                        textAlign: "center",
+                        minHeight: 26,
+                        border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
+                        background: !c.inMonth ? "#f6f7f9" : c.hasSortie ? "#d1f5e0" : c.isWeekend ? "#e5e7eb" : "#fff",
+                        opacity: c.inMonth ? 1 : 0.45,
+                        cursor: c.hasSortie && c.inMonth ? "pointer" : "default",
+                      }}>
                       <div style={{ fontSize: 11, fontWeight: 800, color: c.hasSortie && c.inMonth ? COLORS.vertFonce : COLORS.noir }}>{c.day}</div>
                       {c.hasSortie && c.inMonth && <div style={{ fontSize: 7, marginTop: 1, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
                     </div>
@@ -394,6 +398,45 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
           })()}
         </div>
       </div>
+
+      {/* Détail des sorties pour une date du calendrier */}
+      {selectedDate && (() => {
+        const sortiesDuJour = requests.filter(r =>
+          r.type === "activite" &&
+          r.formData?.typeActivite?.includes("Sortie") &&
+          Array.isArray(r.formData?.datesPrevues) &&
+          r.formData.datesPrevues.some(d => d.date === selectedDate)
+        );
+        const dateLabel = new Date(selectedDate + "T00:00:00").toLocaleDateString("fr-CA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedDate(null)}>
+            <div style={{ ...S.card, maxWidth: 560, width: "90%", maxHeight: "80vh", overflowY: "auto", marginBottom: 0 }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, textTransform: "capitalize" }}>Sorties du {dateLabel}</h3>
+                <button style={{ ...S.btn, padding: "4px 10px" }} onClick={() => setSelectedDate(null)}>✕</button>
+              </div>
+              {sortiesDuJour.length === 0 ? (
+                <p style={{ color: COLORS.gris, fontSize: 14 }}>Aucune sortie prévue à cette date.</p>
+              ) : (
+                sortiesDuJour.map((r) => {
+                  const fd = r.formData || {};
+                  const dInfo = fd.datesPrevues.find(d => d.date === selectedDate);
+                  return (
+                    <div key={r.id} style={{ padding: "12px 14px", marginBottom: 10, background: "#f6f7f9", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.bleu, marginBottom: 6 }}>{fd.nomActivite || fd["Nom de l'activité"] || r.title}</div>
+                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Date et heure :</strong> {dInfo?.date}{dInfo?.heureDebut && dInfo?.heureFin ? ` de ${dInfo.heureDebut} à ${dInfo.heureFin}` : ""}</div>
+                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Matières concernées :</strong> {(fd.matieresConcernees || []).join(", ") || "—"}</div>
+                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Niveaux concernés :</strong> {(fd.niveauxConcernes || []).join(", ") || "—"}</div>
+                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Dans le cadre d'une passion :</strong> {fd.passion || "Non"}</div>
+                      <div style={{ fontSize: 13 }}><strong>Groupes concernés :</strong> {fd.groupes || fd["Groupes"] || "—"}</div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Role actions — toujours visible si au moins 1 rôle exécutant */}
       {(user.roles.some(r => ["A","B","C1","C2","C3","D"].includes(r))) && (
