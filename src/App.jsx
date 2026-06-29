@@ -19,7 +19,7 @@ const COLORS = {
 
 // ─── Mock users DB ───────────────────────────────────────────────────────────
 const USERS = [
-  { id: 1,  name: "Marie Dupont",    email: "mdupont",    password: "1234",  roles: [] },
+  { id: 1,  name: "Mario Dumont",    email: "mdupont",    password: "1234",  roles: [] },
   { id: 2,  name: "Jean Martin",     email: "jmartin",    password: "1234",  roles: ["A"] },
   { id: 8,  name: "Pierre Lefebvre", email: "plefebvre",  password: "1234",  roles: ["A"] },
   { id: 3,  name: "Sophie Bernard",  email: "sbernard",   password: "1234",  roles: ["B", "D"] },
@@ -241,7 +241,7 @@ function LoginScreen({ onLogin }) {
             <strong style={{ color: COLORS.bleu, fontSize: 13 }}>Comptes démo</strong>
             <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
               {[
-                { email: "mdupont",   pwd: "1234",  nom: "Marie Dupont",   role: "Utilisateur",    color: "#6b7280" },
+                { email: "mdupont",   pwd: "1234",  nom: "Mario Dumont",   role: "Utilisateur",    color: "#6b7280" },
                 { email: "jmartin",   pwd: "1234",  nom: "Jean Martin",     role: "Approbateur",    color: "#0284c7" },
                 { email: "plefebvre", pwd: "1234",  nom: "Pierre Lefebvre", role: "Approbateur",    color: "#0284c7" },
                 { email: "sbernard",  pwd: "1234",  nom: "Sophie Bernard",  role: "Vérificateur",   color: "#7c3aed" },
@@ -304,6 +304,57 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
             <div style={{ fontSize: 11, color: COLORS.gris, marginTop: 4, lineHeight: 1.3 }}>{stat.label}</div>
           </div>
         ))}
+      </div>
+
+      {/* Calendrier de la semaine */}
+      <div style={{ ...S.card, marginBottom: 24 }}>
+        <h3 style={S.sectionTitle}>Calendrier de la semaine</h3>
+        {(() => {
+          const now = new Date();
+          const todayIso = now.toISOString().slice(0, 10);
+          const dow = now.getDay(); // 0=dimanche … 6=samedi
+          const monday = new Date(now);
+          monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+
+          const sortieDates = new Set();
+          requests.forEach((r) => {
+            if (r.type === "activite" && r.formData?.typeActivite?.includes("Sortie") && Array.isArray(r.formData?.datesPrevues)) {
+              r.formData.datesPrevues.forEach((d) => { if (d.date) sortieDates.add(d.date); });
+            }
+          });
+
+          const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+          const semaine = jours.map((label, i) => {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            const iso = d.toISOString().slice(0, 10);
+            return { label, iso, day: d.getDate(), isWeekend: i >= 5, isToday: iso === todayIso, hasSortie: sortieDates.has(iso) };
+          });
+
+          return (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
+                {semaine.map((j) => (
+                  <div key={j.iso} style={{
+                    borderRadius: 8,
+                    padding: "12px 8px",
+                    textAlign: "center",
+                    border: j.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
+                    background: j.hasSortie ? "#d1f5e0" : j.isWeekend ? "#e5e7eb" : "#fff",
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j.label}</div>
+                    <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4, color: j.hasSortie ? COLORS.vertFonce : COLORS.noir }}>{j.day}</div>
+                    {j.hasSortie && <div style={{ fontSize: 10, marginTop: 4, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 16, marginTop: 14, fontSize: 12, color: COLORS.gris }}>
+                <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#d1f5e0", borderRadius: 2, marginRight: 6 }}></span>Demande de sortie</span>
+                <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#e5e7eb", borderRadius: 2, marginRight: 6 }}></span>Fin de semaine</span>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* New request buttons */}
@@ -3819,12 +3870,12 @@ export default function App() {
 
     // ══ DEMANDES D'ACHAT (AM) ════════════════════════════════════════════
 
-    // Marie Dupont → Jean Martin — soumise (attend approbation)
+    // Mario Dumont → Jean Martin — soumise (attend approbation)
     { id: 2001, requestNumber: "AM-2026-04-07-001", type: "achat",
       title: "Matériel arts plastiques — S1",
-      authorId: 1, authorName: "Marie Dupont", date: "2026-04-07", status: "soumise",
-      history: [{ status: "soumise", by: "Marie Dupont", date: "2026-04-07", comment: "" }],
-      formData: { demandePar: "Marie Dupont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-04-07", dateSouhaitee: "2026-04-30",
+      authorId: 1, authorName: "Mario Dumont", date: "2026-04-07", status: "soumise",
+      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-04-07", comment: "" }],
+      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-04-07", dateSouhaitee: "2026-04-30",
         matiere: "Arts", matiereArts: "Plastique", autreArt: "", autreMatiere: "", niveau: "S1", autreNiveau: "",
         directionResponsable: "Jean Martin", fournisseurPrincipal: "Dessercom",
         natureActivite: "Achat de matériel pour le projet de collage et sculpture en papier mâché.",
@@ -3837,12 +3888,12 @@ export default function App() {
           { id:4, qty:"3",  nom:"Rouleaux papier kraft 50m", description:"", numero:"PK-50", lien:"", prixUnitaire:"18.99", soustotal:"65.65", sansTaxe:false },
         ] } },
 
-    // Marie Dupont → Pierre Lefebvre — soumise (attend 2e approbateur)
+    // Mario Dumont → Pierre Lefebvre — soumise (attend 2e approbateur)
     { id: 2002, requestNumber: "AM-2026-04-12-001", type: "achat",
       title: "Matériel de sciences — S3",
-      authorId: 1, authorName: "Marie Dupont", date: "2026-04-12", status: "soumise",
-      history: [{ status: "soumise", by: "Marie Dupont", date: "2026-04-12", comment: "" }],
-      formData: { demandePar: "Marie Dupont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-04-12", dateSouhaitee: "2026-05-01",
+      authorId: 1, authorName: "Mario Dumont", date: "2026-04-12", status: "soumise",
+      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-04-12", comment: "" }],
+      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-04-12", dateSouhaitee: "2026-05-01",
         matiere: "Science", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S3", autreNiveau: "",
         directionResponsable: "Pierre Lefebvre", fournisseurPrincipal: "Lab-Pro",
         natureActivite: "Achat de matériel pour les expériences de chimie du trimestre final.",
@@ -3914,18 +3965,18 @@ export default function App() {
           { id:3, qty:"30", nom:"Anthologie de la poésie québécoise", description:"", numero:"APQ-2024", lien:"", prixUnitaire:"9.99", soustotal:"299.70", sansTaxe:true, commande:false, recu:false },
         ] } },
 
-    // Marie Dupont — traitée (cycle complet)
+    // Mario Dumont — traitée (cycle complet)
     { id: 2006, requestNumber: "AM-2025-11-20-001", type: "achat",
       title: "Dictionnaires Petit Robert — Français S2",
-      authorId: 1, authorName: "Marie Dupont", date: "2025-11-20", status: "traitee",
+      authorId: 1, authorName: "Mario Dumont", date: "2025-11-20", status: "traitee",
       history: [
-        { status: "soumise",   by: "Marie Dupont",   date: "2025-11-20", comment: "" },
+        { status: "soumise",   by: "Mario Dumont",   date: "2025-11-20", comment: "" },
         { status: "acceptee",  by: "Jean Martin",    date: "2025-11-22", comment: "Approuvé." },
         { status: "validee",   by: "Sophie Bernard", date: "2025-11-24", comment: "Vérifiée — conforme au catalogue." },
         { status: "commandee", by: "Luc Tremblay",   date: "2025-11-26", comment: "Commande passée chez Renaud-Bray." },
         { status: "traitee",   by: "Paula Gagnon",   date: "2025-12-02", comment: "Tous les dictionnaires reçus et distribués." },
       ],
-      formData: { demandePar: "Marie Dupont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2025-11-20", dateSouhaitee: "2025-12-05",
+      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2025-11-20", dateSouhaitee: "2025-12-05",
         matiere: "Français", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S2", autreNiveau: "",
         directionResponsable: "Jean Martin", fournisseurPrincipal: "Renaud-Bray",
         natureActivite: "Remplacement des dictionnaires usés — 2 classes de 2e secondaire.",
@@ -3935,11 +3986,11 @@ export default function App() {
 
     // ══ DEMANDES D'ACTIVITÉS ET DE SORTIES (AS) ══════════════════════
 
-    // Marie Dupont — soumise
+    // Mario Dumont — soumise
     { id: 2007, requestNumber: "AS-2026-04-10-001", type: "activite",
       title: "Visite Biodôme de Montréal — Sciences S3",
-      authorId: 1, authorName: "Marie Dupont", date: "2026-04-10", status: "soumise",
-      history: [{ status: "soumise", by: "Marie Dupont", date: "2026-04-10", comment: "" }],
+      authorId: 1, authorName: "Mario Dumont", date: "2026-04-10", status: "soumise",
+      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-04-10", comment: "" }],
       formData: { "Nom de l'activité": "Visite Biodôme — Sciences S3", "Type": "Sortie éducative",
         responsables: [], nomActivite: "Visite Biodôme de Montréal — Sciences S3", typeActivite: "Sortie éducative",
         dateDemande: "2026-04-10", datesPrevues: [{ date: "2026-05-20", heureDebut: "09:00", heureFin: "15:30" }],
@@ -4015,14 +4066,14 @@ export default function App() {
 
     // ══ DEMANDES DE RÉQUISITION INTERNE (RI) ═════════════════════════
 
-    // Marie Dupont — soumise → vérificateur (Sophie Bernard)
+    // Mario Dumont — soumise → vérificateur (Sophie Bernard)
     { id: 2011, requestNumber: "RI-2026-04-14-001", type: "requisition",
       title: "Déplacement de mobilier — Salle 204",
-      authorId: 1, authorName: "Marie Dupont", date: "2026-04-14", status: "acceptee",
-      history: [{ status: "acceptee", by: "Marie Dupont", date: "2026-04-14", comment: "Demande envoyée au vérificateur (réquisition interne)" }],
+      authorId: 1, authorName: "Mario Dumont", date: "2026-04-14", status: "acceptee",
+      history: [{ status: "acceptee", by: "Mario Dumont", date: "2026-04-14", comment: "Demande envoyée au vérificateur (réquisition interne)" }],
       formData: { titre: "Déplacement de mobilier — Salle 204", typeService: "Déplacement de mobilier", priorite: "Normal",
         description: "Déplacer 12 tables et 24 chaises de la salle 204 vers le local 008 avant les travaux de peinture.",
-        autreType: "", demandePar: "Marie Dupont", courriel: "mdupont@csslaval.gouv.qc.ca",
+        autreType: "", demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca",
         dateDemande: "2026-04-14", dateRealisation: "2026-04-18", localConcerne: "Salle 204 → Local 008", drawing: [] } },
 
     // Luc Tremblay — attribuée au Concierge (Michel Caron)
