@@ -19,7 +19,7 @@ const COLORS = {
 
 // ─── Mock users DB ───────────────────────────────────────────────────────────
 const USERS = [
-  { id: 1,  name: "Marie Dupont",    email: "mdupont",    password: "1234",  roles: [] },
+  { id: 1,  name: "Mario Dumont",    email: "mdupont",    password: "1234",  roles: [] },
   { id: 2,  name: "Jean Martin",     email: "jmartin",    password: "1234",  roles: ["A"] },
   { id: 8,  name: "Pierre Lefebvre", email: "plefebvre",  password: "1234",  roles: ["A"] },
   { id: 3,  name: "Sophie Bernard",  email: "sbernard",   password: "1234",  roles: ["B"] },
