@@ -307,90 +307,91 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
         ))}
       </div>
 
-      {/* Calendrier du mois */}
-      <div style={{ ...S.card, marginBottom: 24 }}>
-        <h3 style={S.sectionTitle}>Calendrier</h3>
-        {(() => {
-          const now = new Date();
-          const todayIso = now.toISOString().slice(0, 10);
+      {/* Nouvelle demande (colonne gauche) + Calendrier (colonne droite) */}
+      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 24, marginBottom: 24, alignItems: "start" }}>
+        <div style={{ ...S.card, marginBottom: 0 }}>
+          <h3 style={S.sectionTitle}>Nouvelle demande</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {Object.entries(REQUEST_TYPES).map(([key, label]) => (
+              <button key={key} style={S.btnPrimary} onClick={() => setView("form_" + key)}>
+                + {label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-          const sortieDates = new Set();
-          requests.forEach((r) => {
-            if (r.type === "activite" && r.formData?.typeActivite?.includes("Sortie") && Array.isArray(r.formData?.datesPrevues)) {
-              r.formData.datesPrevues.forEach((d) => { if (d.date) sortieDates.add(d.date); });
+        <div style={{ ...S.card, marginBottom: 0, padding: "18px 20px" }}>
+          <h3 style={{ ...S.sectionTitle, fontSize: 15, marginBottom: 10, paddingBottom: 6 }}>Calendrier</h3>
+          {(() => {
+            const now = new Date();
+            const todayIso = now.toISOString().slice(0, 10);
+
+            const sortieDates = new Set();
+            requests.forEach((r) => {
+              if (r.type === "activite" && r.formData?.typeActivite?.includes("Sortie") && Array.isArray(r.formData?.datesPrevues)) {
+                r.formData.datesPrevues.forEach((d) => { if (d.date) sortieDates.add(d.date); });
+              }
+            });
+
+            const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+            const jours = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+            const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+            const startOffset = (first.getDay() + 6) % 7; // lundi = 0
+            const gridStart = new Date(first);
+            gridStart.setDate(first.getDate() - startOffset);
+
+            const cells = [];
+            for (let i = 0; i < 42; i++) {
+              const d = new Date(gridStart);
+              d.setDate(gridStart.getDate() + i);
+              const iso = d.toISOString().slice(0, 10);
+              const inMonth = d.getMonth() === calMonth.getMonth();
+              const dowIdx = (d.getDay() + 6) % 7; // lundi = 0 … dimanche = 6
+              cells.push({ iso, day: d.getDate(), inMonth, isWeekend: dowIdx >= 5, isToday: iso === todayIso, hasSortie: sortieDates.has(iso) });
             }
-          });
+            while (cells.length > 35 && cells.slice(-7).every((c) => !c.inMonth)) cells.splice(-7, 7);
 
-          const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-          const jours = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+            const isCurrentMonth = calMonth.getMonth() === now.getMonth() && calMonth.getFullYear() === now.getFullYear();
 
-          const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
-          const startOffset = (first.getDay() + 6) % 7; // lundi = 0
-          const gridStart = new Date(first);
-          gridStart.setDate(first.getDate() - startOffset);
-
-          const cells = [];
-          for (let i = 0; i < 42; i++) {
-            const d = new Date(gridStart);
-            d.setDate(gridStart.getDate() + i);
-            const iso = d.toISOString().slice(0, 10);
-            const inMonth = d.getMonth() === calMonth.getMonth();
-            const dowIdx = (d.getDay() + 6) % 7; // lundi = 0 … dimanche = 6
-            cells.push({ iso, day: d.getDate(), inMonth, isWeekend: dowIdx >= 5, isToday: iso === todayIso, hasSortie: sortieDates.has(iso) });
-          }
-          while (cells.length > 35 && cells.slice(-7).every((c) => !c.inMonth)) cells.splice(-7, 7);
-
-          const isCurrentMonth = calMonth.getMonth() === now.getMonth() && calMonth.getFullYear() === now.getFullYear();
-
-          return (
-            <>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <button style={{ ...S.btn, padding: "6px 12px" }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}>‹ Précédent</button>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <strong style={{ fontSize: 15 }}>{MOIS[calMonth.getMonth()]} {calMonth.getFullYear()}</strong>
-                  {!isCurrentMonth && (
-                    <button style={{ ...S.btn, padding: "4px 10px", fontSize: 12 }} onClick={() => setCalMonth(new Date(now.getFullYear(), now.getMonth(), 1))}>Aujourd'hui</button>
-                  )}
-                </div>
-                <button style={{ ...S.btn, padding: "6px 12px" }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}>Suivant ›</button>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
-                {jours.map((j) => (
-                  <div key={j} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j}</div>
-                ))}
-                {cells.map((c) => (
-                  <div key={c.iso} style={{
-                    borderRadius: 8,
-                    padding: "10px 6px",
-                    textAlign: "center",
-                    minHeight: 44,
-                    border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
-                    background: !c.inMonth ? "#f6f7f9" : c.hasSortie ? "#d1f5e0" : c.isWeekend ? "#e5e7eb" : "#fff",
-                    opacity: c.inMonth ? 1 : 0.45,
-                  }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: c.hasSortie && c.inMonth ? COLORS.vertFonce : COLORS.noir }}>{c.day}</div>
-                    {c.hasSortie && c.inMonth && <div style={{ fontSize: 9, marginTop: 2, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
+            return (
+              <>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <button style={{ ...S.btn, padding: "3px 8px", fontSize: 12 }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}>‹</button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <strong style={{ fontSize: 12.5 }}>{MOIS[calMonth.getMonth()]} {calMonth.getFullYear()}</strong>
+                    {!isCurrentMonth && (
+                      <button style={{ ...S.btn, padding: "2px 7px", fontSize: 10.5 }} onClick={() => setCalMonth(new Date(now.getFullYear(), now.getMonth(), 1))}>Aujourd'hui</button>
+                    )}
                   </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 16, marginTop: 14, fontSize: 12, color: COLORS.gris }}>
-                <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#d1f5e0", borderRadius: 2, marginRight: 6 }}></span>Demande de sortie</span>
-                <span><span style={{ display: "inline-block", width: 10, height: 10, background: "#e5e7eb", borderRadius: 2, marginRight: 6 }}></span>Fin de semaine</span>
-              </div>
-            </>
-          );
-        })()}
-      </div>
-
-      {/* New request buttons */}
-      <div style={{ ...S.card, marginBottom: 24 }}>
-        <h3 style={S.sectionTitle}>Nouvelle demande</h3>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {Object.entries(REQUEST_TYPES).map(([key, label]) => (
-            <button key={key} style={S.btnPrimary} onClick={() => setView("form_" + key)}>
-              + {label}
-            </button>
-          ))}
+                  <button style={{ ...S.btn, padding: "3px 8px", fontSize: 12 }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}>›</button>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+                  {jours.map((j) => (
+                    <div key={j} style={{ textAlign: "center", fontSize: 9.5, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j}</div>
+                  ))}
+                  {cells.map((c) => (
+                    <div key={c.iso} style={{
+                      borderRadius: 5,
+                      padding: "4px 2px",
+                      textAlign: "center",
+                      minHeight: 26,
+                      border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
+                      background: !c.inMonth ? "#f6f7f9" : c.hasSortie ? "#d1f5e0" : c.isWeekend ? "#e5e7eb" : "#fff",
+                      opacity: c.inMonth ? 1 : 0.45,
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 800, color: c.hasSortie && c.inMonth ? COLORS.vertFonce : COLORS.noir }}>{c.day}</div>
+                      {c.hasSortie && c.inMonth && <div style={{ fontSize: 7, marginTop: 1, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 14, marginTop: 10, fontSize: 10.5, color: COLORS.gris }}>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#d1f5e0", borderRadius: 2, marginRight: 5 }}></span>Demande de sortie</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#e5e7eb", borderRadius: 2, marginRight: 5 }}></span>Fin de semaine</span>
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
 
