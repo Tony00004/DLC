@@ -273,6 +273,7 @@ function LoginScreen({ onLogin }) {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView }) {
+  const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const myRequests = requests.filter((r) => r.authorId === user.id);
   const pendingA  = requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
@@ -306,15 +307,12 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
         ))}
       </div>
 
-      {/* Calendrier de la semaine */}
+      {/* Calendrier du mois */}
       <div style={{ ...S.card, marginBottom: 24 }}>
-        <h3 style={S.sectionTitle}>Calendrier de la semaine</h3>
+        <h3 style={S.sectionTitle}>Calendrier</h3>
         {(() => {
           const now = new Date();
           const todayIso = now.toISOString().slice(0, 10);
-          const dow = now.getDay(); // 0=dimanche … 6=samedi
-          const monday = new Date(now);
-          monday.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
 
           const sortieDates = new Set();
           requests.forEach((r) => {
@@ -323,28 +321,55 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
             }
           });
 
-          const jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
-          const semaine = jours.map((label, i) => {
-            const d = new Date(monday);
-            d.setDate(monday.getDate() + i);
+          const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+          const jours = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+          const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
+          const startOffset = (first.getDay() + 6) % 7; // lundi = 0
+          const gridStart = new Date(first);
+          gridStart.setDate(first.getDate() - startOffset);
+
+          const cells = [];
+          for (let i = 0; i < 42; i++) {
+            const d = new Date(gridStart);
+            d.setDate(gridStart.getDate() + i);
             const iso = d.toISOString().slice(0, 10);
-            return { label, iso, day: d.getDate(), isWeekend: i >= 5, isToday: iso === todayIso, hasSortie: sortieDates.has(iso) };
-          });
+            const inMonth = d.getMonth() === calMonth.getMonth();
+            const dowIdx = (d.getDay() + 6) % 7; // lundi = 0 … dimanche = 6
+            cells.push({ iso, day: d.getDate(), inMonth, isWeekend: dowIdx >= 5, isToday: iso === todayIso, hasSortie: sortieDates.has(iso) });
+          }
+          while (cells.length > 35 && cells.slice(-7).every((c) => !c.inMonth)) cells.splice(-7, 7);
+
+          const isCurrentMonth = calMonth.getMonth() === now.getMonth() && calMonth.getFullYear() === now.getFullYear();
 
           return (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 10 }}>
-                {semaine.map((j) => (
-                  <div key={j.iso} style={{
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <button style={{ ...S.btn, padding: "6px 12px" }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() - 1, 1))}>‹ Précédent</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <strong style={{ fontSize: 15 }}>{MOIS[calMonth.getMonth()]} {calMonth.getFullYear()}</strong>
+                  {!isCurrentMonth && (
+                    <button style={{ ...S.btn, padding: "4px 10px", fontSize: 12 }} onClick={() => setCalMonth(new Date(now.getFullYear(), now.getMonth(), 1))}>Aujourd'hui</button>
+                  )}
+                </div>
+                <button style={{ ...S.btn, padding: "6px 12px" }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}>Suivant ›</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8 }}>
+                {jours.map((j) => (
+                  <div key={j} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j}</div>
+                ))}
+                {cells.map((c) => (
+                  <div key={c.iso} style={{
                     borderRadius: 8,
-                    padding: "12px 8px",
+                    padding: "10px 6px",
                     textAlign: "center",
-                    border: j.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
-                    background: j.hasSortie ? "#d1f5e0" : j.isWeekend ? "#e5e7eb" : "#fff",
+                    minHeight: 44,
+                    border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
+                    background: !c.inMonth ? "#f6f7f9" : c.hasSortie ? "#d1f5e0" : c.isWeekend ? "#e5e7eb" : "#fff",
+                    opacity: c.inMonth ? 1 : 0.45,
                   }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j.label}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, marginTop: 4, color: j.hasSortie ? COLORS.vertFonce : COLORS.noir }}>{j.day}</div>
-                    {j.hasSortie && <div style={{ fontSize: 10, marginTop: 4, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
+                    <div style={{ fontSize: 14, fontWeight: 800, color: c.hasSortie && c.inMonth ? COLORS.vertFonce : COLORS.noir }}>{c.day}</div>
+                    {c.hasSortie && c.inMonth && <div style={{ fontSize: 9, marginTop: 2, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
                   </div>
                 ))}
               </div>
