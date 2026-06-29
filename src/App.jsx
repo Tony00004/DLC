@@ -1980,6 +1980,10 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
       setError("Une ou plusieurs dates prévues sont dans le passé. Veuillez choisir des dates aujourd'hui ou dans le futur.");
       return;
     }
+    if (form.typeActivite === "Sortie" && (!form.typeTransport || !form.nomEtablissement || !form.adresseComplete || !form.personneContact || !form.telephone || !form.heureDepart || !form.heureRetour)) {
+      setError("Pour une sortie, veuillez remplir tous les champs obligatoires de la section Transport (type de transport, nom de l'établissement, adresse complète, personne à contacter, téléphone, heure de départ et heure de retour).");
+      return;
+    }
     setError("");
     const formDataOut = {
       "Nom de l'activité": form.nomActivite,
@@ -2301,8 +2305,8 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
               <h3 style={{ ...S.sectionTitle, marginTop: 24 }}>Transport (sortie seulement)</h3>
               <div style={S.grid2}>
                 <div>
-                  <label style={S.label}>Type de transport</label>
-                  <select style={S.select} value={form.typeTransport} onChange={(e) => setForm({ ...form, typeTransport: e.target.value })}>
+                  <label style={S.label}>Type de transport<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <select style={S.select} value={form.typeTransport} onChange={(e) => setForm({ ...form, typeTransport: e.target.value })} required>
                     <option value="">Sélectionnez</option>
                     {typesTransport.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
@@ -2316,19 +2320,19 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
                   )}
                 </div>
                 <div>
-                  <label style={S.label}>Nom de l'établissement</label>
-                  <input style={S.input} value={form.nomEtablissement} onChange={(e) => setForm({ ...form, nomEtablissement: e.target.value })} />
+                  <label style={S.label}>Nom de l'établissement<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <input style={S.input} value={form.nomEtablissement} onChange={(e) => setForm({ ...form, nomEtablissement: e.target.value })} required />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <label style={S.label}>Adresse complète</label>
-                  <input style={S.input} value={form.adresseComplete} onChange={(e) => setForm({ ...form, adresseComplete: e.target.value })} />
+                  <label style={S.label}>Adresse complète<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <input style={S.input} value={form.adresseComplete} onChange={(e) => setForm({ ...form, adresseComplete: e.target.value })} required />
                 </div>
                 <div>
-                  <label style={S.label}>Personne à contacter</label>
-                  <input style={S.input} value={form.personneContact} onChange={(e) => setForm({ ...form, personneContact: e.target.value })} />
+                  <label style={S.label}>Personne à contacter<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <input style={S.input} value={form.personneContact} onChange={(e) => setForm({ ...form, personneContact: e.target.value })} required />
                 </div>
                 <div>
-                  <label style={S.label}>Téléphone / Poste</label>
+                  <label style={S.label}>Téléphone / Poste<span style={{ color: COLORS.rouge }}> *</span></label>
                   <div style={{ display: "flex", gap: 8 }}>
                     <input style={{ ...S.input, flex: 2 }} placeholder="(514) 555-0000" value={form.telephone} onChange={(e) => {
                       const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
@@ -2337,17 +2341,17 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
                       else if (digits.length >= 4) fmt = "(" + digits.slice(0,3) + ") " + digits.slice(3);
                       else if (digits.length >= 1) fmt = "(" + digits;
                       setForm({ ...form, telephone: fmt });
-                    }} />
+                    }} required />
                     <input style={{ ...S.input, flex: 1 }} placeholder="Poste" value={form.poste} onChange={(e) => setForm({ ...form, poste: e.target.value })} />
                   </div>
                 </div>
                 <div>
-                  <label style={S.label}>Heure départ école</label>
-                  <input type="time" style={S.input} value={form.heureDepart} onChange={(e) => setForm({ ...form, heureDepart: e.target.value })} />
+                  <label style={S.label}>Heure de départ de l'école<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <input type="time" style={S.input} value={form.heureDepart} onChange={(e) => setForm({ ...form, heureDepart: e.target.value })} required />
                 </div>
                 <div>
-                  <label style={S.label}>Heure retour école</label>
-                  <input type="time" style={S.input} value={form.heureRetour} onChange={(e) => setForm({ ...form, heureRetour: e.target.value })} />
+                  <label style={S.label}>Heure de retour de l'école<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <input type="time" style={S.input} value={form.heureRetour} onChange={(e) => setForm({ ...form, heureRetour: e.target.value })} required />
                 </div>
               </div>
             </>
@@ -3351,6 +3355,10 @@ function FormActiviteEdit({ request, user, allUsers, onSave, onBack }) {
       setError("Veuillez remplir les champs obligatoires : nom de l'activité, type et niveaux concernés.");
       return;
     }
+    if (isSortie && (!form.typeTransport || !form.nomEtablissement || !form.adresseComplete || !form.personneContact || !form.telephone || !form.heureDepart || !form.heureRetour)) {
+      setError("Pour une sortie, veuillez remplir tous les champs obligatoires de la section Transport (type de transport, nom de l'établissement, adresse complète, personne à contacter, téléphone, heure de départ et heure de retour).");
+      return;
+    }
     setError("");
     onSave({
       ...fd,
@@ -3488,7 +3496,7 @@ function FormActiviteEdit({ request, user, allUsers, onSave, onBack }) {
           <>
             <h3 style={S.sectionTitle}>Transport (sortie seulement)</h3>
             <div style={S.grid2}>
-              <F label="Type de transport">
+              <F label="Type de transport" required>
                 <select style={S.select} value={form.typeTransport} onChange={(e) => setForm({ ...form, typeTransport: e.target.value })}>
                   <option value="">Sélectionnez</option>
                   {["Aucun déplacement", "Location d'un autobus scolaire ou de ville", "Transport en commun", "Covoiturage", "Autre"].map((t) => <option key={t} value={t}>{t}</option>)}
@@ -3498,16 +3506,16 @@ function FormActiviteEdit({ request, user, allUsers, onSave, onBack }) {
                   <div style={{ marginTop: 8, padding: "8px 12px", background: "#e0f2fe", border: "1px solid #7dd3fc", borderRadius: 6, color: "#075985", fontSize: 12 }}>ℹ️ Réservation via secrétariat au moins 10 jours ouvrables avant la sortie.</div>
                 )}
               </F>
-              <F label="Nom de l'établissement visité">
+              <F label="Nom de l'établissement visité" required>
                 <input style={S.input} value={form.nomEtablissement} onChange={(e) => setForm({ ...form, nomEtablissement: e.target.value })} />
               </F>
             </div>
-            <F label="Adresse complète"><input style={S.input} value={form.adresseComplete} onChange={(e) => setForm({ ...form, adresseComplete: e.target.value })} /></F>
+            <F label="Adresse complète" required><input style={S.input} value={form.adresseComplete} onChange={(e) => setForm({ ...form, adresseComplete: e.target.value })} /></F>
             <div style={S.grid2}>
-              <F label="Heure de départ de l'école"><input type="time" style={S.input} value={form.heureDepart} onChange={(e) => setForm({ ...form, heureDepart: e.target.value })} /></F>
-              <F label="Heure de retour à l'école"><input type="time" style={S.input} value={form.heureRetour} onChange={(e) => setForm({ ...form, heureRetour: e.target.value })} /></F>
-              <F label="Personne-contact sur place"><input style={S.input} value={form.personneContact} onChange={(e) => setForm({ ...form, personneContact: e.target.value })} /></F>
-              <F label="Téléphone / Poste">
+              <F label="Heure de départ de l'école" required><input type="time" style={S.input} value={form.heureDepart} onChange={(e) => setForm({ ...form, heureDepart: e.target.value })} /></F>
+              <F label="Heure de retour à l'école" required><input type="time" style={S.input} value={form.heureRetour} onChange={(e) => setForm({ ...form, heureRetour: e.target.value })} /></F>
+              <F label="Personne-contact sur place" required><input style={S.input} value={form.personneContact} onChange={(e) => setForm({ ...form, personneContact: e.target.value })} /></F>
+              <F label="Téléphone / Poste" required>
                 <div style={{ display: "flex", gap: 6 }}>
                   <input style={{ ...S.input, flex: 2 }} value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} />
                   <input style={{ ...S.input, flex: 1 }} placeholder="Poste" value={form.poste} onChange={(e) => setForm({ ...form, poste: e.target.value })} />
