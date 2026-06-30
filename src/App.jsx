@@ -2501,14 +2501,17 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
 
 
 // ─── Zone de dessin pour la réquisition interne ──────────────────────────────
-function DrawingZone({ onChange }) {
+function DrawingZone({ onChange, initialShapes = [] }) {
   const [tool,      setTool]     = useState("select");
   const [color,     setColor]    = useState("#1a1a2e");
   const [fontSize,  setFontSize] = useState(16);
   const [bold,      setBold]     = useState(false);
   const [italic,    setItalic]   = useState(false);
   const [underline, setUnderline]= useState(false);
-  const [shapes,    setShapes]   = useState([]);
+  const [shapes,    setShapes]   = useState(initialShapes);
+
+  // Propager les formes au parent à chaque modification
+  useEffect(() => { onChange(shapes); }, [shapes]); // eslint-disable-line react-hooks/exhaustive-deps
   const [drawing,   setDrawing]  = useState(null);
   const [clipboard, setClipboard]= useState(null);
   const [selected,  setSelected] = useState(null);
@@ -3113,7 +3116,7 @@ function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode, initi
           <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 10 }}>
             Utilisez la zone ci-dessous pour illustrer votre demande : plan de salle, emplacement de mobilier, flèches de déplacement, etc.
           </p>
-          <DrawingZone onChange={(shapes) => setForm(prev => ({ ...prev, drawing: shapes }))} />
+          <DrawingZone initialShapes={form.drawing} onChange={(shapes) => setForm(prev => ({ ...prev, drawing: shapes }))} />
 
           {error && <div style={{ ...S.error, marginTop: 16 }}>{error}</div>}
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
