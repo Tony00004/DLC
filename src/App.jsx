@@ -913,6 +913,11 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                   <strong style={{ fontSize: 13 }}>{STATUSES[h.status]?.label}</strong>
                   <span style={{ fontSize: 12, color: COLORS.gris, marginLeft: 8 }}>par {h.by} · {h.date}</span>
                   {h.comment && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#333" }}>{h.comment}</p>}
+                  {h.adminComment && user.roles.some(r => ["A","B","C1","C2","C3","D"].includes(r)) && (
+                    <div style={{ marginTop: 6, padding: "6px 10px", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 4, fontSize: 12, color: "#1e40af" }}>
+                      <strong>Note administrative :</strong> {h.adminComment}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -943,8 +948,8 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
               {/* ── Approbateur (A) — achat et activité ── */}
               {canApprove && (
                 <>
-                  <button style={btnVert} onClick={() => onAction(request.id, "acceptee", comment, user)}>Accepter</button>
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                  <button style={btnVert} onClick={() => onAction(request.id, "acceptee", comment, user, adminComment)}>Accepter</button>
+                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                 </>
               )}
 
@@ -953,14 +958,14 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                 <>
                   {request.type === "requisition" ? (
                     <>
-                      <button style={btnVert} onClick={() => onAction(request.id, "validee_C3", comment, user)}>Attribuer au Concierge</button>
-                      <button style={{ ...btnVert, background: "#0891b2", borderColor: "#0891b2" }} onClick={() => onAction(request.id, "validee_C2", comment, user)}>Attribuer au Magasinier</button>
-                      <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                      <button style={btnVert} onClick={() => onAction(request.id, "validee_C3", comment, user, adminComment)}>Attribuer au Concierge</button>
+                      <button style={{ ...btnVert, background: "#0891b2", borderColor: "#0891b2" }} onClick={() => onAction(request.id, "validee_C2", comment, user, adminComment)}>Attribuer au Magasinier</button>
+                      <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                     </>
                   ) : (
                     <>
-                      <button style={btnVert} onClick={() => onAction(request.id, "validee", comment, user)}>Vérifier</button>
-                      <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                      <button style={btnVert} onClick={() => onAction(request.id, "validee", comment, user, adminComment)}>Vérifier</button>
+                      <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                     </>
                   )}
                 </>
@@ -970,7 +975,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
               {canSecretary && (
                 <>
                   {canMarkCommande && request.type === "achat" && (
-                    <button style={btnOrange} onClick={() => onAction(request.id, "commandee", comment, user)}>
+                    <button style={btnOrange} onClick={() => onAction(request.id, "commandee", comment, user, adminComment)}>
                       Marquer items en commande
                     </button>
                   )}
@@ -981,7 +986,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                     return (
                       <>
                         {tousRecus && (
-                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
                             Confirmer réception complète et compléter
                           </button>
                         )}
@@ -995,7 +1000,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                           </button>
                         )}
                         {!tousRecus && !certainsRecus && (
-                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
                             Marquer comme complétée
                           </button>
                         )}
@@ -1003,11 +1008,11 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                     );
                   })()}
                   {request.type === "activite" && (
-                    <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                    <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
                       Marquer comme complétée
                     </button>
                   )}
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                 </>
               )}
 
@@ -1019,7 +1024,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                 return (
                   <>
                     {tousRecus ? (
-                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
                         Confirmer réception complète et compléter
                       </button>
                     ) : certainsRecus ? (
@@ -1031,11 +1036,11 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                         Confirmer réception partielle
                       </button>
                     ) : (
-                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
                         Confirmer réception et compléter
                       </button>
                     )}
-                    <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                    <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                   </>
                 );
               })()}
@@ -1043,10 +1048,10 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
               {/* ── Concierge (C3) — réquisition interne ── */}
               {canConcierge && (
                 <>
-                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user)}>
+                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
                     Marquer comme complétée
                   </button>
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user)}>Refuser</button>
+                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                 </>
               )}
 
@@ -1176,7 +1181,12 @@ function QueueView({ role, label, requests, allRequests, user, onAction, onBack,
                 <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                   <td style={S.td}>{r.id}</td>
                   <td style={S.td}><span style={{ fontSize: 12 }}>{REQUEST_TYPES[r.type]}</span></td>
-                  <td style={S.td}><strong>{r.title}</strong></td>
+                  <td style={S.td}>
+                    <strong>{r.title}</strong>
+                    {r.type === "requisition" && r.formData?.drawing?.length > 0 && (
+                      <span title="Schéma joint à la demande" style={{ marginLeft: 6, fontSize: 12, background: "#e0f2fe", color: "#0369a1", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>📐 Schéma</span>
+                    )}
+                  </td>
                   <td style={S.td}>{r.authorName}</td>
                   <td style={S.td}>{r.date}</td>
                   <td style={S.td}>
@@ -1827,11 +1837,13 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
         {/* Questions Oui/Non */}
         <div style={{ ...S.grid2, marginTop: 16, gap: "12px 22px" }}>
           {[
-            { label: "Demande que j'irai acheter par moi-même", val: achatPersonnel, set: setAchatPersonnel },
-            { label: "Demande en lien avec un conférencier ou une conférencière", val: conferencier, set: setConferencier },
+            { label: "Demande que j'irai acheter par moi-même", val: achatPersonnel, set: setAchatPersonnel,
+              warning: "À noter que vous devez attendre la confirmation avant de procéder à l'achat du matériel. Si vous achetez le tout avant, il se peut qu'il soit impossible de procéder à votre remboursement." },
+            { label: "Demande en lien avec un conférencier ou une conférencière", val: conferencier, set: setConferencier,
+              warning: "Dans un minimum de trois semaines avant la conférence, il est important que le conférencier ou la conférencière remplisse le formulaire « Déclaration relative aux antécédents judiciaires ». Pour plus d'informations, merci de communiquer avec la secrétaire de l'école." },
             { label: "Demande en lien avec une activité parascolaire", val: parascolaire, set: setParascolaire },
             { label: "Demande en lien avec le budget passion", val: budgetPassion, set: setBudgetPassion },
-          ].map(({ label, val, set }) => (
+          ].map(({ label, val, set, warning }) => (
             <div key={label} style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: 6, border: "1px solid #e5e7eb" }}>
               <label style={{ ...S.label, margin: "0 0 8px", flex: 1 }}>{label} <span style={{ color: COLORS.rouge }}>*</span></label>
               <div style={{ display: "flex", gap: 20 }}>
@@ -1842,6 +1854,11 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
                   </label>
                 ))}
               </div>
+              {val === "Oui" && warning && (
+                <div style={{ marginTop: 10, padding: "10px 14px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 6, color: "#7a5800", fontSize: 13, lineHeight: 1.5 }}>
+                  ⚠️ {warning}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -3947,266 +3964,281 @@ export default function App() {
 
     // ══ DEMANDES D'ACHAT (AM) ════════════════════════════════════════════
 
-    // Mario Dumont → Jean Martin — soumise (attend approbation)
-    { id: 2001, requestNumber: "AM-2026-04-07-001", type: "achat",
-      title: "Matériel arts plastiques — S1",
-      authorId: 1, authorName: "Mario Dumont", date: "2026-04-07", status: "soumise",
-      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-04-07", comment: "" }],
-      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-04-07", dateSouhaitee: "2026-04-30",
-        matiere: "Arts", matiereArts: "Plastique", autreArt: "", autreMatiere: "", niveau: "S1", autreNiveau: "",
+    // Mario Dumont → Jean Martin — soumise
+    { id: 2001, requestNumber: "AM-2026-06-20-001", type: "achat",
+      title: "Matériel arts plastiques — S2",
+      authorId: 1, authorName: "Mario Dumont", date: "2026-06-20", status: "soumise",
+      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-06-20", comment: "" }],
+      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-06-20", dateSouhaitee: "2026-09-01",
+        matiere: "Arts", matiereArts: "Plastique", autreArt: "", autreMatiere: "", niveau: "S2", autreNiveau: "",
         directionResponsable: "Jean Martin", fournisseurPrincipal: "Dessercom",
-        natureActivite: "Achat de matériel pour le projet de collage et sculpture en papier mâché.",
+        natureActivite: "Réapprovisionnement du matériel d'arts plastiques pour la rentrée 2026-2027.",
         achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
-        total: "287.36 $", _totalNum: 287.36,
+        total: "348.49 $", _totalNum: 348.49,
         _rows: [
-          { id:1, qty:"10", nom:"Feuilles cartonnées A3 (paquet 50)", description:"Blanc et couleurs", numero:"FC-A3", lien:"", prixUnitaire:"12.50", soustotal:"143.72", sansTaxe:false },
-          { id:2, qty:"6",  nom:"Peinture acrylique 500ml", description:"Couleurs primaires", numero:"PA-500", lien:"", prixUnitaire:"8.99", soustotal:"61.97", sansTaxe:false },
-          { id:3, qty:"2",  nom:"Colle blanche 1L", description:"", numero:"CB-1L", lien:"", prixUnitaire:"6.49", soustotal:"14.93", sansTaxe:false },
-          { id:4, qty:"3",  nom:"Rouleaux papier kraft 50m", description:"", numero:"PK-50", lien:"", prixUnitaire:"18.99", soustotal:"65.65", sansTaxe:false },
+          { id:1, qty:"20", nom:"Pinceaux assortis (set)", description:"Soies naturelles, tailles 2-12", numero:"PIN-ASS", lien:"", prixUnitaire:"3.49", soustotal:"69.80", sansTaxe:false },
+          { id:2, qty:"12", nom:"Peinture acrylique 500mL", description:"Couleurs primaires et secondaires", numero:"ACR-500", lien:"", prixUnitaire:"8.99", soustotal:"107.88", sansTaxe:false },
+          { id:3, qty:"5",  nom:"Papier aquarelle A2 (bloc 20f)", description:"300g/m²", numero:"PAQ-A2", lien:"", prixUnitaire:"12.99", soustotal:"64.95", sansTaxe:false },
+          { id:4, qty:"4",  nom:"Colle blanche 1L", description:"", numero:"CB-1L", lien:"", prixUnitaire:"6.49", soustotal:"25.96", sansTaxe:false },
+          { id:5, qty:"10", nom:"Carton entoilé 50×65cm", description:"Grain fin", numero:"CEN-5065", lien:"", prixUnitaire:"7.99", soustotal:"79.90", sansTaxe:false },
         ] } },
 
-    // Mario Dumont → Pierre Lefebvre — soumise (attend 2e approbateur)
-    { id: 2002, requestNumber: "AM-2026-04-12-001", type: "achat",
-      title: "Matériel de sciences — S3",
-      authorId: 1, authorName: "Mario Dumont", date: "2026-04-12", status: "soumise",
-      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-04-12", comment: "" }],
-      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-04-12", dateSouhaitee: "2026-05-01",
-        matiere: "Science", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S3", autreNiveau: "",
-        directionResponsable: "Pierre Lefebvre", fournisseurPrincipal: "Lab-Pro",
-        natureActivite: "Achat de matériel pour les expériences de chimie du trimestre final.",
-        achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
-        total: "456.80 $", _totalNum: 456.80,
-        _rows: [
-          { id:1, qty:"15", nom:"Béchers 250ml", description:"Verre borosilicate", numero:"BC-250", lien:"", prixUnitaire:"8.99", soustotal:"155.40", sansTaxe:false },
-          { id:2, qty:"5",  nom:"Brûleur Bunsen", description:"", numero:"BB-01", lien:"", prixUnitaire:"24.99", soustotal:"143.72", sansTaxe:false },
-          { id:3, qty:"10", nom:"Lunettes de sécurité", description:"", numero:"LS-01", lien:"", prixUnitaire:"5.99", soustotal:"68.87", sansTaxe:false },
-          { id:4, qty:"3",  nom:"Kit acides/bases", description:"Solutions 500ml", numero:"KAB-01", lien:"", prixUnitaire:"18.99", soustotal:"65.65", sansTaxe:false },
-        ] } },
-
-    // Jean Martin — approuvée par lui-même → vérification Sophie Bernard
-    { id: 2003, requestNumber: "AM-2026-03-15-001", type: "achat",
-      title: "Calculatrices TI-30 — Mathématiques S3",
-      authorId: 2, authorName: "Jean Martin", date: "2026-03-15", status: "acceptee",
+    // Jean Martin → Jean Martin — acceptée (auto-approuvée), attend vérificateur
+    { id: 2002, requestNumber: "AM-2026-06-10-001", type: "achat",
+      title: "Calculatrices TI-30 — Mathématiques S3/S4",
+      authorId: 2, authorName: "Jean Martin", date: "2026-06-10", status: "acceptee",
       history: [
-        { status: "soumise",  by: "Jean Martin", date: "2026-03-15", comment: "" },
-        { status: "acceptee", by: "Jean Martin", date: "2026-03-17", comment: "Approuvé — achat prioritaire avant les examens." },
+        { status: "soumise",  by: "Jean Martin", date: "2026-06-10", comment: "" },
+        { status: "acceptee", by: "Jean Martin", date: "2026-06-11", comment: "Approuvé — remplacement avant les examens de fin d'année." },
       ],
-      formData: { demandePar: "Jean Martin", courriel: "jmartin@csslaval.gouv.qc.ca", dateDemande: "2026-03-15", dateSouhaitee: "2026-04-01",
+      formData: { demandePar: "Jean Martin", courriel: "jmartin@csslaval.gouv.qc.ca", dateDemande: "2026-06-10", dateSouhaitee: "2026-08-25",
         matiere: "Mathématiques", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S3", autreNiveau: "",
         directionResponsable: "Jean Martin", fournisseurPrincipal: "Bureau en Gros",
-        natureActivite: "Remplacement des calculatrices défectueuses pour les 2 groupes de mathématiques S3.",
+        natureActivite: "Remplacement des calculatrices défectueuses — 3 classes de mathématiques S3/S4.",
         achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
-        total: "862.65 $", _totalNum: 862.65,
-        _rows: [{ id:1, qty:"30", nom:"Calculatrice TI-30X IIS", description:"Scientifique approuvée ministère", numero:"TI30XIIS", lien:"https://beg.com", prixUnitaire:"24.99", soustotal:"862.65", sansTaxe:false }] } },
+        total: "755.55 $", _totalNum: 755.55,
+        _rows: [
+          { id:1, qty:"28", nom:"Calculatrice TI-30X IIS", description:"Scientifique approuvée ministère", numero:"TI30XIIS", lien:"", prixUnitaire:"24.99", soustotal:"699.72", sansTaxe:false },
+          { id:2, qty:"4",  nom:"Piles AAA (paquet 4)", description:"Longue durée", numero:"PAA-4", lien:"", prixUnitaire:"5.99", soustotal:"23.96", sansTaxe:false },
+          { id:3, qty:"1",  nom:"Rangement calculatrices (30 cases)", description:"Cadenas inclus", numero:"RNG-30", lien:"", prixUnitaire:"31.87", soustotal:"31.87", sansTaxe:false },
+        ] } },
 
-    // Sophie Bernard — vérifiée → secrétaire Luc Tremblay
-    { id: 2004, requestNumber: "AM-2026-02-10-001", type: "achat",
-      title: "Équipement éducation physique — Gymnase",
-      authorId: 3, authorName: "Sophie Bernard", date: "2026-02-10", status: "validee",
+    // Sophie Bernard → Pierre Lefebvre — vérifiée → secrétaire Luc Tremblay
+    { id: 2003, requestNumber: "AM-2026-05-25-001", type: "achat",
+      title: "Matériel de sciences — Chimie S5",
+      authorId: 3, authorName: "Sophie Bernard", date: "2026-05-25", status: "validee",
       history: [
-        { status: "soumise",  by: "Sophie Bernard", date: "2026-02-10", comment: "" },
-        { status: "acceptee", by: "Pierre Lefebvre", date: "2026-02-12", comment: "Approuvé — budget disponible." },
-        { status: "validee",  by: "Sophie Bernard",  date: "2026-02-14", comment: "Vérifiée — Sport Expert confirmé." },
+        { status: "soumise",  by: "Sophie Bernard",  date: "2026-05-25", comment: "" },
+        { status: "acceptee", by: "Pierre Lefebvre", date: "2026-05-27", comment: "Approuvé — budget sciences disponible." },
+        { status: "validee",  by: "Sophie Bernard",  date: "2026-05-29", comment: "Vérifiée — Lab-Pro confirme disponibilité pour août." },
       ],
-      formData: { demandePar: "Sophie Bernard", courriel: "sbernard@csslaval.gouv.qc.ca", dateDemande: "2026-02-10", dateSouhaitee: "2026-03-01",
+      formData: { demandePar: "Sophie Bernard", courriel: "sbernard@csslaval.gouv.qc.ca", dateDemande: "2026-05-25", dateSouhaitee: "2026-08-20",
+        matiere: "Science", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S5", autreNiveau: "",
+        directionResponsable: "Pierre Lefebvre", fournisseurPrincipal: "Lab-Pro",
+        natureActivite: "Réapprovisionnement des consommables pour les laboratoires de chimie organique — S5.",
+        achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
+        total: "612.80 $", _totalNum: 612.80,
+        _rows: [
+          { id:1, qty:"25", nom:"Lunettes de sécurité anti-buée", description:"Conformes ANSI Z87.1", numero:"LS-01", lien:"", prixUnitaire:"5.99", soustotal:"149.75", sansTaxe:false, commande:false, recu:false },
+          { id:2, qty:"4",  nom:"Brûleur Bunsen gaz naturel", description:"Avec robinet d'arrêt", numero:"BB-GN", lien:"", prixUnitaire:"24.99", soustotal:"99.96", sansTaxe:false, commande:false, recu:false },
+          { id:3, qty:"20", nom:"Béchers 250mL borosilicate", description:"Gradués, résistants à la chaleur", numero:"BC-250B", lien:"", prixUnitaire:"8.99", soustotal:"179.80", sansTaxe:false, commande:false, recu:false },
+          { id:4, qty:"3",  nom:"Kit réactifs chimie organique", description:"Solutions acide/base 500mL", numero:"KRCO-3", lien:"", prixUnitaire:"61.10", soustotal:"183.30", sansTaxe:false, commande:false, recu:false },
+        ] } },
+
+    // Mario Dumont → Jean Martin — en commande
+    { id: 2004, requestNumber: "AM-2026-05-08-001", type: "achat",
+      title: "Romans lecture obligatoire — Français S3",
+      authorId: 1, authorName: "Mario Dumont", date: "2026-05-08", status: "commandee",
+      history: [
+        { status: "soumise",   by: "Mario Dumont",   date: "2026-05-08", comment: "" },
+        { status: "acceptee",  by: "Jean Martin",    date: "2026-05-09", comment: "Approuvé." },
+        { status: "validee",   by: "Sophie Bernard", date: "2026-05-12", comment: "Vérifiée — Renaud-Bray confirme stock disponible." },
+        { status: "commandee", by: "Luc Tremblay",   date: "2026-05-15", comment: "Commandes passées — livraison estimée fin juin." },
+      ],
+      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2026-05-08", dateSouhaitee: "2026-06-25",
+        matiere: "Français", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S3", autreNiveau: "",
+        directionResponsable: "Jean Martin", fournisseurPrincipal: "Renaud-Bray",
+        natureActivite: "Romans pour les lectures obligatoires de fin d'année — 2 groupes de français S3.",
+        achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
+        total: "783.68 $", _totalNum: 783.68,
+        _rows: [
+          { id:1, qty:"32", nom:"Le Survenant — Germaine Guèvremont", description:"Édition scolaire annotée", numero:"GG-LS", lien:"", prixUnitaire:"11.50", soustotal:"368.00", sansTaxe:true, commande:true, recu:false },
+          { id:2, qty:"32", nom:"Bonheur d'occasion — Gabrielle Roy", description:"Édition scolaire", numero:"GR-BO", lien:"", prixUnitaire:"12.99", soustotal:"415.68", sansTaxe:true, commande:false, recu:false },
+        ] } },
+
+    // Luc Tremblay → Pierre Lefebvre — traitée (cycle complet)
+    { id: 2005, requestNumber: "AM-2026-04-01-001", type: "achat",
+      title: "Équipement éducation physique — Gymnase",
+      authorId: 4, authorName: "Luc Tremblay", date: "2026-04-01", status: "traitee",
+      history: [
+        { status: "soumise",   by: "Luc Tremblay",    date: "2026-04-01", comment: "" },
+        { status: "acceptee",  by: "Pierre Lefebvre", date: "2026-04-03", comment: "Approuvé — budget disponible pour le gymnase." },
+        { status: "validee",   by: "Sophie Bernard",  date: "2026-04-05", comment: "Vérifiée — Sport Expert confirme disponibilité." },
+        { status: "commandee", by: "Luc Tremblay",    date: "2026-04-08", comment: "Commande passée chez Sport Expert." },
+        { status: "traitee",   by: "Paula Gagnon",    date: "2026-04-20", comment: "Tout reçu et vérifié — matériel distribué au gymnase." },
+      ],
+      formData: { demandePar: "Luc Tremblay", courriel: "ltremblay@csslaval.gouv.qc.ca", dateDemande: "2026-04-01", dateSouhaitee: "2026-04-25",
         matiere: "Éducation physique", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "Non applicable", autreNiveau: "",
         directionResponsable: "Pierre Lefebvre", fournisseurPrincipal: "Sport Expert",
-        natureActivite: "Renouvellement des ballons, cordes et cônes pour les cours d'éducation physique.",
+        natureActivite: "Renouvellement du matériel sportif pour les cours d'éducation physique — tous niveaux.",
         achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
-        total: "574.20 $", _totalNum: 574.20,
+        total: "573.44 $", _totalNum: 573.44,
         _rows: [
-          { id:1, qty:"20", nom:"Ballon de basketball", description:"Taille 7, intérieur", numero:"BB-7", lien:"", prixUnitaire:"18.99", soustotal:"437.09", sansTaxe:false, commande:false, recu:false },
-          { id:2, qty:"30", nom:"Corde à sauter 3m", description:"Poignées ergonomiques", numero:"CS-3M", lien:"", prixUnitaire:"3.49", soustotal:"120.32", sansTaxe:false, commande:false, recu:false },
-          { id:3, qty:"20", nom:"Cônes de signalisation", description:"Hauteur 30cm", numero:"CO-OR", lien:"", prixUnitaire:"0.99", soustotal:"22.78", sansTaxe:false, commande:false, recu:false },
+          { id:1, qty:"15", nom:"Ballon de basketball taille 7", description:"Intérieur, norme officielle", numero:"BB-T7", lien:"", prixUnitaire:"18.99", soustotal:"284.85", sansTaxe:false, commande:true, recu:true },
+          { id:2, qty:"6",  nom:"Filet de badminton double", description:"Poteaux inclus", numero:"FBD-6", lien:"", prixUnitaire:"29.99", soustotal:"179.94", sansTaxe:false, commande:true, recu:true },
+          { id:3, qty:"30", nom:"Cônes de signalisation 30cm", description:"Assortis, résistants", numero:"CO-30", lien:"", prixUnitaire:"0.99", soustotal:"29.70", sansTaxe:false, commande:true, recu:true },
+          { id:4, qty:"5",  nom:"Sac de rangement en filet (grand)", description:"", numero:"SRF-G", lien:"", prixUnitaire:"15.79", soustotal:"78.95", sansTaxe:false, commande:true, recu:true },
         ] } },
 
-    // Paula Gagnon — en commande (secrétaire a commandé)
-    { id: 2005, requestNumber: "AM-2026-01-28-001", type: "achat",
-      title: "Livres de littérature — Français S4",
-      authorId: 6, authorName: "Paula Gagnon", date: "2026-01-28", status: "commandee",
+    // Paula Gagnon — annulée par l'auteure avant approbation
+    { id: 2006, requestNumber: "AM-2026-06-12-001", type: "achat",
+      title: "Matériel de robotique — Technologie S3/S4",
+      authorId: 6, authorName: "Paula Gagnon", date: "2026-06-12", status: "annulee",
       history: [
-        { status: "soumise",   by: "Paula Gagnon",   date: "2026-01-28", comment: "" },
-        { status: "acceptee",  by: "Jean Martin",    date: "2026-01-30", comment: "Approuvé." },
-        { status: "validee",   by: "Sophie Bernard", date: "2026-02-01", comment: "Vérifiée." },
-        { status: "commandee", by: "Luc Tremblay",   date: "2026-02-05", comment: "Commandes passées — livraison 10 jours." },
+        { status: "soumise", by: "Paula Gagnon", date: "2026-06-12", comment: "" },
+        { status: "annulee", by: "Paula Gagnon", date: "2026-06-13", comment: "Annulée — la direction confirme que du matériel disponible en entrepôt peut être réutilisé." },
       ],
-      formData: { demandePar: "Paula Gagnon", courriel: "pgagnon@csslaval.gouv.qc.ca", dateDemande: "2026-01-28", dateSouhaitee: "2026-02-20",
-        matiere: "Français", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S4", autreNiveau: "",
-        directionResponsable: "Jean Martin", fournisseurPrincipal: "Renaud-Bray",
-        natureActivite: "Achat de romans pour les lectures obligatoires du trimestre d'hiver — S4.",
+      formData: { demandePar: "Paula Gagnon", courriel: "pgagnon@csslaval.gouv.qc.ca", dateDemande: "2026-06-12", dateSouhaitee: "2026-09-05",
+        matiere: "Science", matiereArts: "", autreArt: "", autreMatiere: "Technologie / Robotique", niveau: "S3", autreNiveau: "",
+        directionResponsable: "Pierre Lefebvre", fournisseurPrincipal: "RobotShop",
+        natureActivite: "Achat de kits de robotique pour le nouveau cours de programmation S3/S4 — rentrée 2026-2027.",
         achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
-        total: "604.58 $", _totalNum: 604.58,
+        total: "1 199.70 $", _totalNum: 1199.70,
         _rows: [
-          { id:1, qty:"30", nom:"Bonheur d'occasion — Gabrielle Roy", description:"Édition scolaire", numero:"GR-BO", lien:"", prixUnitaire:"12.99", soustotal:"389.70", sansTaxe:true, commande:true, recu:true },
-          { id:2, qty:"30", nom:"Le Survenant — Germaine Guèvremont", description:"Édition annotée", numero:"GG-LS", lien:"", prixUnitaire:"11.50", soustotal:"345.00", sansTaxe:true, commande:true, recu:false },
-          { id:3, qty:"30", nom:"Anthologie de la poésie québécoise", description:"", numero:"APQ-2024", lien:"", prixUnitaire:"9.99", soustotal:"299.70", sansTaxe:true, commande:false, recu:false },
+          { id:1, qty:"10", nom:"Raspberry Pi 4 Model B (4GB)", description:"Mini-ordinateur programmable", numero:"RPi4-4G", lien:"", prixUnitaire:"79.99", soustotal:"799.90", sansTaxe:false },
+          { id:2, qty:"10", nom:"Câble HDMI 1.5m", description:"", numero:"HDMI-15", lien:"", prixUnitaire:"4.99", soustotal:"49.90", sansTaxe:false },
+          { id:3, qty:"10", nom:"Clavier compact USB (FR-CA)", description:"Compact, résistant", numero:"CLAV-FR", lien:"", prixUnitaire:"19.99", soustotal:"199.90", sansTaxe:false },
+          { id:4, qty:"10", nom:"Boîtier plastique pour Raspberry Pi 4", description:"", numero:"BOI-RPi4", lien:"", prixUnitaire:"15.00", soustotal:"150.00", sansTaxe:false },
         ] } },
-
-    // Mario Dumont — traitée (cycle complet)
-    { id: 2006, requestNumber: "AM-2025-11-20-001", type: "achat",
-      title: "Dictionnaires Petit Robert — Français S2",
-      authorId: 1, authorName: "Mario Dumont", date: "2025-11-20", status: "traitee",
-      history: [
-        { status: "soumise",   by: "Mario Dumont",   date: "2025-11-20", comment: "" },
-        { status: "acceptee",  by: "Jean Martin",    date: "2025-11-22", comment: "Approuvé." },
-        { status: "validee",   by: "Sophie Bernard", date: "2025-11-24", comment: "Vérifiée — conforme au catalogue." },
-        { status: "commandee", by: "Luc Tremblay",   date: "2025-11-26", comment: "Commande passée chez Renaud-Bray." },
-        { status: "traitee",   by: "Paula Gagnon",   date: "2025-12-02", comment: "Tous les dictionnaires reçus et distribués." },
-      ],
-      formData: { demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca", dateDemande: "2025-11-20", dateSouhaitee: "2025-12-05",
-        matiere: "Français", matiereArts: "", autreArt: "", autreMatiere: "", niveau: "S2", autreNiveau: "",
-        directionResponsable: "Jean Martin", fournisseurPrincipal: "Renaud-Bray",
-        natureActivite: "Remplacement des dictionnaires usés — 2 classes de 2e secondaire.",
-        achatPersonnel: "Non", conferencier: "Non", parascolaire: "Non", budgetPassion: "Non",
-        total: "690.00 $", _totalNum: 690.00,
-        _rows: [{ id:1, qty:"30", nom:"Le Petit Robert 2025", description:"Dictionnaire langue française", numero:"PR2025", lien:"", prixUnitaire:"20.00", soustotal:"690.00", sansTaxe:true, commande:true, recu:true }] } },
 
     // ══ DEMANDES D'ACTIVITÉS ET DE SORTIES (AS) ══════════════════════
 
-    // Mario Dumont — soumise
-    { id: 2007, requestNumber: "AS-2026-04-10-001", type: "activite",
-      title: "Visite Biodôme de Montréal — Sciences S3",
-      authorId: 1, authorName: "Mario Dumont", date: "2026-04-10", status: "soumise",
-      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-04-10", comment: "" }],
-      formData: { "Nom de l'activité": "Visite Biodôme — Sciences S3", "Type": "Sortie éducative",
-        responsables: [], nomActivite: "Visite Biodôme de Montréal — Sciences S3", typeActivite: "Sortie éducative",
-        dateDemande: "2026-04-10", datesPrevues: [{ date: "2026-05-20", heureDebut: "09:00", heureFin: "15:30" }],
-        description: "Visite guidée du Biodôme pour les groupes S3.", niveauxConcernes: ["S3"], matieresConcernees: ["Science"], groupes: "301, 302",
+    // Mario Dumont → Jean Martin — soumise — Sortie Biodôme (datesPrevues: 2026-07-09)
+    { id: 2007, requestNumber: "AS-2026-06-20-001", type: "activite",
+      title: "Sortie Biodôme de Montréal — Sciences S3",
+      authorId: 1, authorName: "Mario Dumont", date: "2026-06-20", status: "soumise",
+      history: [{ status: "soumise", by: "Mario Dumont", date: "2026-06-20", comment: "" }],
+      formData: { "Nom de l'activité": "Sortie Biodôme — Sciences S3", "Type": "Sortie éducative",
+        responsables: [], nomActivite: "Sortie Biodôme de Montréal — Sciences S3", typeActivite: "Sortie éducative",
+        dateDemande: "2026-06-20", datesPrevues: [{ date: "2026-07-09", heureDebut: "09:00", heureFin: "15:30" }],
+        description: "Visite guidée du Biodôme pour les groupes S3 : zones climatiques, biodiversité, faune laurentienne.", niveauxConcernes: ["S3"], matieresConcernees: ["Science"], groupes: "301, 302, 303",
         directionResponsable: "Jean Martin",
         passion: "Non", passionTypes: [], passionAutres: "", obligatoire: "Non", autresClientele: "",
-        coutEleve: "15.00", nbEleves: "58", coutAdulte: "0", nbAdultes: "4",
-        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "210.00", autreMontant: "0",
+        coutEleve: "15.00", nbEleves: "72", coutAdulte: "0", nbAdultes: "4",
+        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "260.00", autreMontant: "0",
         typeTransport: "Location d'un autobus scolaire ou de ville", autreTransport: "",
-        nomEtablissement: "Biodôme de Montréal", adresseComplete: "4777 Av. Pierre-De Coubertin, Montréal",
-        personneContact: "Service éducatif", telephone: "(514) 868-3000", poste: "", heureDepart: "08:45", heureRetour: "16:00" } },
+        nomEtablissement: "Biodôme de Montréal", adresseComplete: "4777 Av. Pierre-De Coubertin, Montréal, QC H1V 1B3",
+        personneContact: "Service éducatif — Biodôme", telephone: "(514) 868-3000", poste: "", heureDepart: "08:30", heureRetour: "16:30" } },
 
-    // Luc Tremblay — approuvée
-    { id: 2008, requestNumber: "AS-2026-03-22-001", type: "activite",
-      title: "Conférence : Carrières en santé — S4/S5",
-      authorId: 4, authorName: "Luc Tremblay", date: "2026-03-22", status: "acceptee",
+    // Sophie Bernard → Pierre Lefebvre — acceptée — Sortie Vieux-Montréal, passion Oui (datesPrevues: 2026-07-22)
+    { id: 2008, requestNumber: "AS-2026-06-03-001", type: "activite",
+      title: "Sortie Vieux-Montréal — Histoire S4",
+      authorId: 3, authorName: "Sophie Bernard", date: "2026-06-03", status: "acceptee",
       history: [
-        { status: "soumise",  by: "Luc Tremblay", date: "2026-03-22", comment: "" },
-        { status: "acceptee", by: "Jean Martin",  date: "2026-03-24", comment: "Approuvé — excellent sujet d'orientation." },
+        { status: "soumise",  by: "Sophie Bernard",  date: "2026-06-03", comment: "" },
+        { status: "acceptee", by: "Pierre Lefebvre", date: "2026-06-05", comment: "Approuvé — excellente activité dans le cadre du programme Passion Histoire." },
       ],
-      formData: { "Nom de l'activité": "Conférence : Carrières en santé", "Type": "Conférence",
-        responsables: [], nomActivite: "Conférence : Carrières en santé — S4/S5", typeActivite: "Conférence",
-        dateDemande: "2026-03-22", datesPrevues: [{ date: "2026-04-28", heureDebut: "13:15", heureFin: "15:15" }],
-        description: "Dr Isabelle Côté présentera les carrières en santé.", niveauxConcernes: ["S4","S5"], matieresConcernees: ["Non applicable"], groupes: "401, 402, 501",
-        directionResponsable: "Jean Martin",
-        passion: "Non", passionTypes: [], passionAutres: "", obligatoire: "Non", autresClientele: "",
-        coutEleve: "0", nbEleves: "85", coutAdulte: "0", nbAdultes: "0",
-        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "0", autreMontant: "350",
-        typeTransport: "Non applicable", autreTransport: "", nomEtablissement: "", adresseComplete: "",
-        personneContact: "Dr Isabelle Côté", telephone: "(514) 555-0182", poste: "", heureDepart: "", heureRetour: "" } },
+      formData: { "Nom de l'activité": "Sortie Vieux-Montréal — Histoire S4", "Type": "Sortie éducative",
+        responsables: [{ userId: 2, nom: "Jean Martin", courriel: "jmartin" }], nomActivite: "Sortie Vieux-Montréal — Histoire S4", typeActivite: "Sortie éducative",
+        dateDemande: "2026-06-03", datesPrevues: [{ date: "2026-07-22", heureDebut: "09:00", heureFin: "16:00" }],
+        description: "Circuit pédestre guidé dans le Vieux-Montréal : Place d'Armes, Vieux-Port, Château Ramezay.", niveauxConcernes: ["S4"], matieresConcernees: ["Univers social / Histoire"], groupes: "401, 402",
+        directionResponsable: "Pierre Lefebvre",
+        passion: "Oui", passionTypes: ["Autres"], passionAutres: "Culture et patrimoine québécois", obligatoire: "Non", autresClientele: "",
+        coutEleve: "0", nbEleves: "55", coutAdulte: "0", nbAdultes: "3",
+        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "0", autreMontant: "0",
+        typeTransport: "Transport en commun", autreTransport: "",
+        nomEtablissement: "Vieux-Montréal — Place Jacques-Cartier", adresseComplete: "Place Jacques-Cartier, Montréal, QC H2Y 1B6",
+        personneContact: "Office du tourisme de Montréal", telephone: "(514) 873-2015", poste: "", heureDepart: "08:15", heureRetour: "17:00" } },
 
-    // Sophie Bernard — vérifiée → secrétaire
-    { id: 2009, requestNumber: "AS-2026-02-15-001", type: "activite",
-      title: "Sortie Musée des Beaux-Arts — Arts S3/S4",
-      authorId: 3, authorName: "Sophie Bernard", date: "2026-02-15", status: "validee",
+    // Pierre Lefebvre → Pierre Lefebvre — vérifiée — Sortie Planétarium (datesPrevues: 2026-06-30)
+    { id: 2009, requestNumber: "AS-2026-05-15-001", type: "activite",
+      title: "Sortie Planétarium — Sciences S1/S2",
+      authorId: 8, authorName: "Pierre Lefebvre", date: "2026-05-15", status: "validee",
       history: [
-        { status: "soumise",  by: "Sophie Bernard", date: "2026-02-15", comment: "" },
-        { status: "acceptee", by: "Pierre Lefebvre", date: "2026-02-17", comment: "Approuvé — activité culturelle pertinente." },
-        { status: "validee",  by: "Sophie Bernard",  date: "2026-02-19", comment: "Vérifiée — transport et billets confirmés." },
+        { status: "soumise",  by: "Pierre Lefebvre", date: "2026-05-15", comment: "" },
+        { status: "acceptee", by: "Pierre Lefebvre", date: "2026-05-16", comment: "Approuvé." },
+        { status: "validee",  by: "Sophie Bernard",  date: "2026-05-20", comment: "Vérifiée — transport réservé, billets confirmés." },
       ],
-      formData: { "Nom de l'activité": "Sortie Musée des Beaux-Arts", "Type": "Sortie éducative",
-        responsables: [], nomActivite: "Sortie Musée des Beaux-Arts — Arts S3/S4", typeActivite: "Sortie éducative",
-        dateDemande: "2026-02-15", datesPrevues: [{ date: "2026-04-22", heureDebut: "09:15", heureFin: "15:40" }],
-        description: "Visite expo Riopelle et collection permanente.", niveauxConcernes: ["S3","S4"], matieresConcernees: ["Arts"], groupes: "302, 303, 401",
+      formData: { "Nom de l'activité": "Sortie Planétarium — Sciences S1/S2", "Type": "Sortie éducative",
+        responsables: [], nomActivite: "Sortie Planétarium — Sciences S1/S2", typeActivite: "Sortie éducative",
+        dateDemande: "2026-05-15", datesPrevues: [{ date: "2026-06-30", heureDebut: "09:00", heureFin: "15:00" }],
+        description: "Séance de planétarium (Les Étoiles) + exposition Espace pour les groupes S1/S2.", niveauxConcernes: ["S1","S2"], matieresConcernees: ["Science","Mathématiques"], groupes: "101, 102, 201, 202",
         directionResponsable: "Pierre Lefebvre",
         passion: "Non", passionTypes: [], passionAutres: "", obligatoire: "Non", autresClientele: "",
-        coutEleve: "17.50", nbEleves: "62", coutAdulte: "0", nbAdultes: "3",
-        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "165.00", autreMontant: "0",
+        coutEleve: "14.50", nbEleves: "84", coutAdulte: "0", nbAdultes: "5",
+        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "290.00", autreMontant: "0",
         typeTransport: "Location d'un autobus scolaire ou de ville", autreTransport: "",
-        nomEtablissement: "Musée des Beaux-Arts de Montréal", adresseComplete: "1380 Rue Sherbrooke O, Montréal",
-        personneContact: "Bureau groupes scolaires", telephone: "(514) 285-2000", poste: "4400", heureDepart: "09:00", heureRetour: "16:00" } },
+        nomEtablissement: "Planétarium Rio Tinto Alcan", adresseComplete: "4801 Av. Pierre-De Coubertin, Montréal, QC H1V 1B3",
+        personneContact: "Service aux groupes scolaires", telephone: "(514) 868-3000", poste: "4", heureDepart: "08:45", heureRetour: "15:45" } },
 
-    // Jean Martin — traitée (cycle complet)
-    { id: 2010, requestNumber: "AS-2025-12-05-001", type: "activite",
-      title: "Spectacle de Noël — Tous niveaux",
-      authorId: 2, authorName: "Jean Martin", date: "2025-12-05", status: "traitee",
+    // Luc Tremblay → Jean Martin — traitée — Conférence orientation (non-sortie, pas de transport)
+    { id: 2010, requestNumber: "AS-2026-04-10-001", type: "activite",
+      title: "Conférence orientation scolaire — S5",
+      authorId: 4, authorName: "Luc Tremblay", date: "2026-04-10", status: "traitee",
       history: [
-        { status: "soumise",  by: "Jean Martin",    date: "2025-12-05", comment: "" },
-        { status: "acceptee", by: "Jean Martin",    date: "2025-12-06", comment: "Approuvé." },
-        { status: "validee",  by: "Sophie Bernard", date: "2025-12-07", comment: "Vérifiée." },
-        { status: "traitee",  by: "Luc Tremblay",   date: "2025-12-19", comment: "Activité complétée — 312 participants." },
+        { status: "soumise",  by: "Luc Tremblay",   date: "2026-04-10", comment: "" },
+        { status: "acceptee", by: "Jean Martin",    date: "2026-04-11", comment: "Approuvé — très pertinent en période d'orientation." },
+        { status: "validee",  by: "Sophie Bernard", date: "2026-04-13", comment: "Vérifiée." },
+        { status: "traitee",  by: "Luc Tremblay",   date: "2026-05-14", comment: "Conférence complétée — excellent taux de participation (52/54 élèves)." },
       ],
-      formData: { "Nom de l'activité": "Spectacle de Noël", "Type": "Activité parascolaire",
-        responsables: [], nomActivite: "Spectacle de Noël — Tous niveaux", typeActivite: "Activité parascolaire",
-        dateDemande: "2025-12-05", datesPrevues: [{ date: "2025-12-18", heureDebut: "18:30", heureFin: "21:00" }],
-        description: "Spectacle de variétés présenté par les élèves. Ouvert aux parents.", niveauxConcernes: ["S1","S2","S3","S4","S5"], matieresConcernees: ["Arts"], groupes: "Tous",
+      formData: { "Nom de l'activité": "Conférence orientation scolaire", "Type": "Conférence",
+        responsables: [], nomActivite: "Conférence orientation scolaire — S5", typeActivite: "Conférence",
+        dateDemande: "2026-04-10", datesPrevues: [{ date: "2026-05-14", heureDebut: "13:00", heureFin: "15:30" }],
+        description: "Me Isabelle Fortier (avocate) et M. Carlos Pereira (ingénieur) présentent leurs parcours aux finissants de S5.", niveauxConcernes: ["S5"], matieresConcernees: ["Non applicable"], groupes: "501, 502",
         directionResponsable: "Jean Martin",
-        passion: "Non", passionTypes: [], passionAutres: "", obligatoire: "Non", autresClientele: "Parents et familles",
-        coutEleve: "0", nbEleves: "312", coutAdulte: "0", nbAdultes: "0",
-        coutLiberation: "233.34", nbPeriodes: "0", coutTransport: "0", autreMontant: "0",
-        typeTransport: "Non applicable", autreTransport: "", nomEtablissement: "Gymnase de l'école", adresseComplete: "",
-        personneContact: "", telephone: "", poste: "", heureDepart: "", heureRetour: "" } },
+        passion: "Non", passionTypes: [], passionAutres: "", obligatoire: "Non", autresClientele: "",
+        coutEleve: "0", nbEleves: "54", coutAdulte: "0", nbAdultes: "0",
+        coutLiberation: "233.34", nbPeriodes: "2", coutTransport: "0", autreMontant: "0",
+        typeTransport: "Non applicable", autreTransport: "",
+        nomEtablissement: "École — Salle multifonctionnelle", adresseComplete: "",
+        personneContact: "Me Isabelle Fortier", telephone: "(450) 555-0143", poste: "", heureDepart: "", heureRetour: "" } },
 
     // ══ DEMANDES DE RÉQUISITION INTERNE (RI) ═════════════════════════
 
-    // Mario Dumont — soumise → vérificateur (Sophie Bernard)
-    { id: 2011, requestNumber: "RI-2026-04-14-001", type: "requisition",
+    // Mario Dumont — envoyée au vérificateur (acceptee)
+    { id: 2011, requestNumber: "RI-2026-06-20-001", type: "requisition",
       title: "Déplacement de mobilier — Salle 204",
-      authorId: 1, authorName: "Mario Dumont", date: "2026-04-14", status: "acceptee",
-      history: [{ status: "acceptee", by: "Mario Dumont", date: "2026-04-14", comment: "Demande envoyée au vérificateur (réquisition interne)" }],
+      authorId: 1, authorName: "Mario Dumont", date: "2026-06-20", status: "acceptee",
+      history: [{ status: "acceptee", by: "Mario Dumont", date: "2026-06-20", comment: "Demande envoyée au vérificateur (réquisition interne)" }],
       formData: { titre: "Déplacement de mobilier — Salle 204", typeService: "Déplacement de mobilier", priorite: "Normal",
-        description: "Déplacer 12 tables et 24 chaises de la salle 204 vers le local 008 avant les travaux de peinture.",
+        description: "Déplacer 12 tables et 24 chaises de la salle 204 vers le local 008 avant les travaux de peinture du 25 juin.",
         autreType: "", demandePar: "Mario Dumont", courriel: "mdupont@csslaval.gouv.qc.ca",
-        dateDemande: "2026-04-14", dateRealisation: "2026-04-18", localConcerne: "Salle 204 → Local 008", drawing: [] } },
+        dateDemande: "2026-06-20", dateRealisation: "2026-06-24", localConcerne: "Salle 204 → Local 008", drawing: [] } },
 
-    // Luc Tremblay — attribuée au Concierge (Michel Caron)
-    { id: 2012, requestNumber: "RI-2026-03-20-001", type: "requisition",
-      title: "Réparation projecteur — Amphithéâtre",
-      authorId: 4, authorName: "Luc Tremblay", date: "2026-03-20", status: "validee_C3",
+    // Paula Gagnon — attribuée au Magasinier (validee_C2)
+    { id: 2012, requestNumber: "RI-2026-06-05-001", type: "requisition",
+      title: "Réorganisation entrepôt matériel scolaire — B-001",
+      authorId: 6, authorName: "Paula Gagnon", date: "2026-06-05", status: "validee_C2",
       history: [
-        { status: "acceptee",   by: "Luc Tremblay",   date: "2026-03-20", comment: "Demande envoyée au vérificateur (réquisition interne)" },
-        { status: "validee_C3", by: "Sophie Bernard",  date: "2026-03-22", comment: "Attribuée au Concierge — Michel Caron disponible dès le 26 mars." },
+        { status: "acceptee",   by: "Paula Gagnon",  date: "2026-06-05", comment: "Demande envoyée au vérificateur (réquisition interne)" },
+        { status: "validee_C2", by: "Sophie Bernard", date: "2026-06-07", comment: "Attribuée au Magasinier — travaux à planifier dès le 16 juin." },
+      ],
+      formData: { titre: "Réorganisation entrepôt matériel scolaire — B-001", typeService: "Déplacement de mobilier", priorite: "Normal",
+        description: "Réorganisation complète de l'entrepôt B-001 : déplacement étagères, tri du matériel, étiquetage des zones thématiques. Durée estimée : 4 heures.",
+        autreType: "", demandePar: "Paula Gagnon", courriel: "pgagnon@csslaval.gouv.qc.ca",
+        dateDemande: "2026-06-05", dateRealisation: "2026-06-16", localConcerne: "Entrepôt B-001", drawing: [] } },
+
+    // Luc Tremblay — attribuée au Concierge (validee_C3)
+    { id: 2013, requestNumber: "RI-2026-05-28-001", type: "requisition",
+      title: "Réparation projecteur — Amphithéâtre",
+      authorId: 4, authorName: "Luc Tremblay", date: "2026-05-28", status: "validee_C3",
+      history: [
+        { status: "acceptee",   by: "Luc Tremblay",  date: "2026-05-28", comment: "Demande envoyée au vérificateur (réquisition interne)" },
+        { status: "validee_C3", by: "Sophie Bernard", date: "2026-05-30", comment: "Attribuée au Concierge — Michel Caron disponible dès le 2 juin." },
       ],
       formData: { titre: "Réparation projecteur — Amphithéâtre", typeService: "Autres (précisez)", priorite: "Élevé",
-        description: "Le projecteur principal ne fonctionne plus. Remplacement lampe + vérification ventilation avant présentation du 28 mars.",
+        description: "Projecteur principal hors service (lampe brûlée + ventilation défectueuse). Remplacement requis avant la présentation de fin d'année du 18 juin.",
         autreType: "Réparation équipement audiovisuel",
         demandePar: "Luc Tremblay", courriel: "ltremblay@csslaval.gouv.qc.ca",
-        dateDemande: "2026-03-20", dateRealisation: "2026-03-26", localConcerne: "Amphithéâtre", drawing: [] } },
-
-    // Paula Gagnon — attribuée au Magasinier
-    { id: 2013, requestNumber: "RI-2026-04-05-001", type: "requisition",
-      title: "Réorganisation entrepôt matériel scolaire",
-      authorId: 6, authorName: "Paula Gagnon", date: "2026-04-05", status: "validee_C2",
-      history: [
-        { status: "acceptee",   by: "Paula Gagnon",   date: "2026-04-05", comment: "Demande envoyée au vérificateur (réquisition interne)" },
-        { status: "validee_C2", by: "Sophie Bernard",  date: "2026-04-07", comment: "Attribuée au Magasinier — Paula doit coordonner avec Paula Gagnon." },
-      ],
-      formData: { titre: "Réorganisation entrepôt matériel scolaire", typeService: "Déplacement de mobilier", priorite: "Normal",
-        description: "Réorganisation complète de l'entrepôt B-001 : déplacement étagères, tri du matériel, étiquetage zones. Estimation 4 heures.",
-        autreType: "", demandePar: "Paula Gagnon", courriel: "pgagnon@csslaval.gouv.qc.ca",
-        dateDemande: "2026-04-05", dateRealisation: "2026-05-02", localConcerne: "Entrepôt B-001", drawing: [] } },
+        dateDemande: "2026-05-28", dateRealisation: "2026-06-05", localConcerne: "Amphithéâtre — Scène principale", drawing: [] } },
 
     // Michel Caron — traitée (cycle complet concierge)
-    { id: 2014, requestNumber: "RI-2025-10-08-001", type: "requisition",
+    { id: 2014, requestNumber: "RI-2026-04-15-001", type: "requisition",
       title: "Installation étagères — Bibliothèque",
-      authorId: 7, authorName: "Michel Caron", date: "2025-10-08", status: "traitee",
+      authorId: 7, authorName: "Michel Caron", date: "2026-04-15", status: "traitee",
       history: [
-        { status: "acceptee",   by: "Michel Caron",    date: "2025-10-08", comment: "Demande envoyée au vérificateur (réquisition interne)" },
-        { status: "validee_C3", by: "Sophie Bernard",   date: "2025-10-10", comment: "Attribuée au Concierge." },
-        { status: "traitee",    by: "Michel Caron",    date: "2025-10-15", comment: "4 étagères installées et fixées. Travaux complétés." },
+        { status: "acceptee",   by: "Michel Caron",   date: "2026-04-15", comment: "Demande envoyée au vérificateur (réquisition interne)" },
+        { status: "validee_C3", by: "Sophie Bernard",  date: "2026-04-17", comment: "Attribuée au Concierge." },
+        { status: "traitee",    by: "Michel Caron",   date: "2026-04-22", comment: "4 étagères installées et fixées. Travaux complétés sans incident." },
       ],
       formData: { titre: "Installation étagères — Bibliothèque", typeService: "Déplacement de mobilier", priorite: "Faible",
-        description: "Installation de 4 nouvelles étagères murales pour les nouvelles acquisitions de la rentrée.",
+        description: "Installation de 4 nouvelles étagères murales dans la section jeunesse de la bibliothèque pour les nouvelles acquisitions.",
         autreType: "", demandePar: "Michel Caron", courriel: "mcaron@csslaval.gouv.qc.ca",
-        dateDemande: "2025-10-08", dateRealisation: "2025-10-15", localConcerne: "Bibliothèque", drawing: [] } },
+        dateDemande: "2026-04-15", dateRealisation: "2026-04-22", localConcerne: "Bibliothèque — Section jeunesse", drawing: [] } },
 
     // Jean Martin — réquisition refusée
-    { id: 2015, requestNumber: "RI-2026-02-20-001", type: "requisition",
-      title: "Peinture corridor C — Bâtiment principal",
-      authorId: 2, authorName: "Jean Martin", date: "2026-02-20", status: "refusee",
+    { id: 2015, requestNumber: "RI-2026-06-15-001", type: "requisition",
+      title: "Remplacement serrure — Local B-012",
+      authorId: 2, authorName: "Jean Martin", date: "2026-06-15", status: "refusee",
       history: [
-        { status: "acceptee", by: "Jean Martin",    date: "2026-02-20", comment: "Demande envoyée au vérificateur (réquisition interne)" },
-        { status: "refusee",  by: "Sophie Bernard", date: "2026-02-22", comment: "Refusée — travaux de peinture prévus lors de la semaine de relâche scolaire par le CSS. À retirer." },
+        { status: "acceptee", by: "Jean Martin",    date: "2026-06-15", comment: "Demande envoyée au vérificateur (réquisition interne)" },
+        { status: "refusee",  by: "Sophie Bernard", date: "2026-06-17", comment: "Refusée — le remplacement des serrures relève de la division infrastructure du CSS. Veuillez contacter directement la maintenance centrale." },
       ],
-      formData: { titre: "Peinture corridor C", typeService: "Autres (précisez)", priorite: "Faible",
-        description: "Repeindre le corridor C (entre salle 201 et salle 215) qui présente des traces importantes.",
-        autreType: "Travaux de peinture",
+      formData: { titre: "Remplacement serrure — Local B-012", typeService: "Autres (précisez)", priorite: "Faible",
+        description: "La serrure du local B-012 est défectueuse depuis 3 semaines — clé coincée à l'ouverture. Remplacement requis avant la rentrée.",
+        autreType: "Menuiserie / Serrurerie",
         demandePar: "Jean Martin", courriel: "jmartin@csslaval.gouv.qc.ca",
-        dateDemande: "2026-02-20", dateRealisation: "2026-03-15", localConcerne: "Corridor C — 2e étage", drawing: [] } },
+        dateDemande: "2026-06-15", dateRealisation: "2026-07-01", localConcerne: "Local B-012 — Sous-sol", drawing: [] } },
   ])
   const [reqCounters, setReqCounters] = useState({
     "AM_2026-01-08": 1,
@@ -4245,7 +4277,7 @@ export default function App() {
     setRequests((prev) => [newReq, ...prev]);
   }
 
-  function handleAction(reqId, newStatus, comment, actionUser) {
+  function handleAction(reqId, newStatus, comment, actionUser, adminComment = "") {
     const today = new Date().toISOString().slice(0, 10);
 
     // Messages de confirmation selon l'action
@@ -4267,7 +4299,7 @@ export default function App() {
     const updatedReq = (r) => ({
       ...r,
       status: newStatus,
-      history: [...(r.history || []), { status: newStatus, by: actionUser.name, date: today, comment: comment || "" }],
+      history: [...(r.history || []), { status: newStatus, by: actionUser.name, date: today, comment: comment || "", adminComment: adminComment || "" }],
     });
 
     setRequests((prev) => prev.map((r) => r.id === reqId ? updatedReq(r) : r));
