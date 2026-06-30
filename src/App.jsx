@@ -556,9 +556,12 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
 }
 
 // ─── Request Detail / Progression ─────────────────────────────────────────────
-function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems }) {
+function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
+  const [cpeLocal, setCpeLocal] = useState(request.formData?.cpeAuth || { decision: null, date: "", comment: "" });
+  const [ceLocal,  setCeLocal]  = useState(request.formData?.ceAuth  || { decision: null, date: "", comment: "" });
+  const [savingAuth, setSavingAuth] = useState(false);
   // Étapes selon le type de demande
   const isRequisition = request.type === "requisition";
   const steps = isRequisition
@@ -952,6 +955,78 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
             </div>
           </div>
         )}
+
+        {/* ── Autorisations CPE / CÉ (activité seulement) ── */}
+        {request.type === "activite" && (() => {
+          const canEditAuth = !isTerminated && (canSecretary || isAdmin);
+          const hasAuthData = cpeLocal.decision || ceLocal.decision;
+          if (!canEditAuth && !hasAuthData) return null;
+          const renderAuthCard = (label, val, setVal) => {
+            const isAuto = val.decision === "autorisee";
+            const isRej  = val.decision === "rejetee";
+            return (
+              <div style={{ flex: 1, border: `1px solid ${isAuto ? "#86efac" : isRej ? "#fca5a5" : "#e5e7eb"}`, borderRadius: 8, padding: 16, background: isAuto ? "#f0fdf4" : isRej ? "#fef2f2" : "#f9fafb" }}>
+                <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>{label}</div>
+                {canEditAuth ? (
+                  <>
+                    <div style={{ display: "flex", gap: 20, marginBottom: 12 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+                        <input type="radio" name={`dlc_auth_${label}`} checked={val.decision === "autorisee"} onChange={() => setVal({ ...val, decision: "autorisee" })} />
+                        <span style={{ color: "#16a34a", fontWeight: 600 }}>✓ Autorisée</span>
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 14 }}>
+                        <input type="radio" name={`dlc_auth_${label}`} checked={val.decision === "rejetee"} onChange={() => setVal({ ...val, decision: "rejetee" })} />
+                        <span style={{ color: "#dc2626", fontWeight: 600 }}>✗ Rejetée</span>
+                      </label>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={S.label}>Date</label>
+                      <input type="date" style={S.input} value={val.date} onChange={e => setVal({ ...val, date: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={S.label}>Commentaire</label>
+                      <textarea style={{ ...S.textarea, minHeight: 60 }} rows={2} value={val.comment} onChange={e => setVal({ ...val, comment: e.target.value })} placeholder={`Commentaire pour l'autorisation ${label}…`} />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {val.decision ? (
+                      <span style={{ display: "inline-block", padding: "3px 10px", borderRadius: 99, fontSize: 13, fontWeight: 700, background: isAuto ? "#dcfce7" : "#fee2e2", color: isAuto ? "#15803d" : "#991b1b" }}>
+                        {isAuto ? "✓ Autorisée" : "✗ Rejetée"}
+                      </span>
+                    ) : (
+                      <span style={{ color: COLORS.gris, fontSize: 13, fontStyle: "italic" }}>En attente</span>
+                    )}
+                    {val.date && <div style={{ fontSize: 13, color: COLORS.gris, marginTop: 4 }}>{val.date}</div>}
+                    {val.comment && <p style={{ margin: "6px 0 0", fontSize: 13 }}>{val.comment}</p>}
+                  </>
+                )}
+              </div>
+            );
+          };
+          return (
+            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 20, marginTop: 4 }}>
+              <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700 }}>Autorisations administratives</h3>
+              <div style={{ display: "flex", gap: 16, marginBottom: canEditAuth ? 14 : 0 }}>
+                {renderAuthCard("CPE", cpeLocal, setCpeLocal)}
+                {renderAuthCard("CÉ",  ceLocal,  setCeLocal)}
+              </div>
+              {canEditAuth && (
+                <button
+                  style={{ ...btnVert, opacity: savingAuth ? 0.7 : 1, cursor: savingAuth ? "not-allowed" : "pointer" }}
+                  disabled={savingAuth}
+                  onClick={async () => {
+                    setSavingAuth(true);
+                    try { await onSaveAuthorizations(request.id, cpeLocal, ceLocal); }
+                    finally { setSavingAuth(false); }
+                  }}
+                >
+                  {savingAuth ? "Sauvegarde…" : "Sauvegarder les autorisations"}
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Panneau d'actions */}
         {!isTerminated && (
@@ -4460,6 +4535,20 @@ export default function App() {
     }
   }
 
+  async function handleSaveAuthorizations(reqId, cpeAuth, ceAuth) {
+    const req = requests.find((r) => r.id === reqId);
+    if (!req) return;
+    try {
+      const updated = await api.updateRequest(reqId, {
+        formData: { ...req.formData, cpeAuth, ceAuth },
+      });
+      setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      if (selectedRequest?.id === reqId) setSelectedRequest(updated);
+    } catch (err) {
+      alert("Erreur lors de la sauvegarde des autorisations : " + err.message);
+    }
+  }
+
   function handleEdit(request, nextStatus, comment) {
     setEditContext({ request, nextStatus, comment });
     if (request.type === "activite") {
@@ -4624,6 +4713,7 @@ export default function App() {
     }
     if (view === "detail" && selectedRequest) {
       return <RequestDetail
+        key={selectedRequest.id}
         request={selectedRequest}
         user={user}
         onAction={handleAction}
@@ -4631,6 +4721,7 @@ export default function App() {
         onEdit={handleEdit}
         onCancel={handleCancelRequest}
         onUpdateItems={handleUpdateItems}
+        onSaveAuthorizations={handleSaveAuthorizations}
       />;
     }
     if (view === "edit_achat" && editContext) {
