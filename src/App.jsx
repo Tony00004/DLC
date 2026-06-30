@@ -886,14 +886,19 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                     <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.vertFonce }}>Schéma / Plan joint à la demande</h4>
                     <div style={{ border: "2px solid #d1d5db", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
                       <svg width="100%" viewBox="0 0 760 440" xmlns="http://www.w3.org/2000/svg" style={{ display: "block" }}>
+                        <defs>
+                          <marker id="ah" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                            <polygon points="0 0,9 3.5,0 7" fill="#1a1a2e" />
+                          </marker>
+                        </defs>
                         {request.formData.drawing.map((s, i) => {
-                          if (s.type === "rect") return <rect key={i} x={s.x} y={s.y} width={s.w} height={s.h} fill="none" stroke={s.color || "#1a1a2e"} strokeWidth={2} />;
-                          if (s.type === "ellipse") return <ellipse key={i} cx={s.x + s.w/2} cy={s.y + s.h/2} rx={Math.abs(s.w/2)} ry={Math.abs(s.h/2)} fill="none" stroke={s.color || "#1a1a2e"} strokeWidth={2} />;
-                          if (s.type === "arrow") return <line key={i} x1={s.x} y1={s.y} x2={s.x2} y2={s.y2} stroke={s.color || "#1a1a2e"} strokeWidth={2} markerEnd="url(#ah)" />;
-                          if (s.type === "text") return <text key={i} x={s.x} y={s.y} fill={s.color || "#1a1a2e"} fontSize={s.fontSize || 16} fontWeight={s.bold ? "bold" : "normal"} fontStyle={s.italic ? "italic" : "normal"} textDecoration={s.underline ? "underline" : "none"}>{s.text}</text>;
+                          const c = s.color || "#1a1a2e";
+                          if (s.type === "rect")    return <rect    key={i} x={s.x} y={s.y} width={s.w} height={s.h} fill={c + "20"} stroke={c} strokeWidth={2} rx={2} />;
+                          if (s.type === "ellipse") return <ellipse key={i} cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} fill={c + "20"} stroke={c} strokeWidth={2} />;
+                          if (s.type === "arrow")   return <line    key={i} x1={s.x0} y1={s.y0} x2={s.x1} y2={s.y1} stroke={c} strokeWidth={2} markerEnd="url(#ah)" />;
+                          if (s.type === "text")    return <text    key={i} x={s.x} y={s.y} fill={c} fontSize={s.fs || 16} fontWeight={s.bold ? "bold" : "normal"} fontStyle={s.italic ? "italic" : "normal"} textDecoration={s.underline ? "underline" : "none"}>{s.text}</text>;
                           return null;
                         })}
-                        <defs><marker id="ah" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#1a1a2e" /></marker></defs>
                       </svg>
                     </div>
                   </div>
@@ -2575,8 +2580,8 @@ function DrawingZone({ onChange }) {
       return;
     }
 
-    // Mode sélection ou poignée : géré par onShapeDown / onHandleDown
-    if (e.target.closest("[data-shape]") || e.target.closest("[data-handle]")) return;
+    // Mode sélection : les clics sur formes/poignées sont gérés par onShapeDown / onHandleDown
+    if (tool === "select" && (e.target.closest("[data-shape]") || e.target.closest("[data-handle]"))) return;
 
     setSelected(null);
     setResize(null);
@@ -2646,9 +2651,8 @@ function DrawingZone({ onChange }) {
   }
 
   function onShapeDown(e, s) {
-    e.stopPropagation();
     if (tool==="text") {
-      // En mode texte, cliquer sur une forme place le texte à cet endroit
+      e.stopPropagation();
       const pos = getSvgPos(e);
       setTextEdit({x:pos.x, y:pos.y});
       setTextVal("");
@@ -2656,7 +2660,9 @@ function DrawingZone({ onChange }) {
       e.preventDefault();
       return;
     }
+    // Outils de dessin (rect/ellipse/arrow) : laisser l'événement remonter à onSvgDown
     if (tool!=="select") return;
+    e.stopPropagation();
     setSelected(s.id);
     const pos=getSvgPos(e);
     const ax=s.type==="ellipse"?s.cx:s.x0!==undefined?s.x0:s.x;
