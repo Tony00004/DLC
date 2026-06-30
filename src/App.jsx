@@ -3801,7 +3801,7 @@ function getPrixTotal(r) {
   return "—";
 }
 
-function HistoryView({ user, requests, setView, setSelectedRequest }) {
+function HistoryView({ user, requests, setView, setSelectedRequest, onDeleteYear }) {
   const isAdmin = user.roles.includes("D");
 
   // Mes demandes (auteur)
@@ -3825,6 +3825,8 @@ function HistoryView({ user, requests, setView, setSelectedRequest }) {
 
   var [histTab, setHistTab] = useState("mes");
   var allVisible = histTab === "mes" ? mesDemandes : agis;
+  var [deleteStep, setDeleteStep] = useState(0); // 0: caché, 1: avertissement, 2: saisie de confirmation
+  var [deleteInput, setDeleteInput] = useState("");
 
   // Années scolaires disponibles
   var yearsSet = {};
@@ -3953,6 +3955,84 @@ function HistoryView({ user, requests, setView, setSelectedRequest }) {
             </button>
           )}
         </div>
+
+        {/* ── Zone de suppression (vérificatrice B ou admin D, année spécifique sélectionnée) ── */}
+        {(user.roles.includes("B") || user.roles.includes("D")) && selectedYear !== "all" && (() => {
+          var yearCount = requests.filter(function(r) { return getSchoolYear(r.date) === selectedYear; }).length;
+          return (
+            <div style={{ marginBottom: 18, border: "1px solid #fca5a5", borderRadius: 8, overflow: "hidden" }}>
+
+              {/* En-tête de la zone danger */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", background: "#fff5f5" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#b42318" }}>
+                  🗑 Suppression de l'année scolaire {selectedYear}
+                </span>
+                {deleteStep === 0 && (
+                  <button
+                    style={{ background: "#b42318", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                    onClick={() => { setDeleteStep(1); setDeleteInput(""); }}>
+                    Supprimer toutes les demandes…
+                  </button>
+                )}
+                {deleteStep > 0 && (
+                  <button
+                    style={{ background: "none", border: "1px solid #fca5a5", color: "#b42318", borderRadius: 6, padding: "4px 10px", fontSize: 12, cursor: "pointer" }}
+                    onClick={() => { setDeleteStep(0); setDeleteInput(""); }}>
+                    ✕ Annuler
+                  </button>
+                )}
+              </div>
+
+              {/* Étape 1 — avertissement */}
+              {deleteStep === 1 && (
+                <div style={{ padding: "14px 18px", background: "#fee2e2", borderTop: "1px solid #fca5a5" }}>
+                  <p style={{ margin: "0 0 10px", fontSize: 13, color: "#7f1d1d", fontWeight: 600 }}>
+                    ⚠️ Vous êtes sur le point de supprimer définitivement <strong>{yearCount} demande{yearCount !== 1 ? "s" : ""}</strong> de l'année scolaire <strong>{selectedYear}</strong>. Cette action est irréversible et ne peut pas être annulée.
+                  </p>
+                  <button
+                    style={{ background: "#b42318", color: "#fff", border: "none", borderRadius: 6, padding: "8px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+                    onClick={() => setDeleteStep(2)}>
+                    Continuer vers la confirmation finale →
+                  </button>
+                </div>
+              )}
+
+              {/* Étape 2 — saisie de l'année pour confirmer */}
+              {deleteStep === 2 && (
+                <div style={{ padding: "14px 18px", background: "#fee2e2", borderTop: "1px solid #fca5a5" }}>
+                  <p style={{ margin: "0 0 10px", fontSize: 13, color: "#7f1d1d" }}>
+                    Pour confirmer la suppression définitive de <strong>{yearCount} demande{yearCount !== 1 ? "s" : ""}</strong>, tapez exactement l'année scolaire ci-dessous :
+                  </p>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <input
+                      style={{ ...S.input, maxWidth: 180, borderColor: deleteInput && deleteInput !== selectedYear ? "#b42318" : "#d1d5db" }}
+                      placeholder={selectedYear}
+                      value={deleteInput}
+                      onChange={function(e) { setDeleteInput(e.target.value); }}
+                    />
+                    <button
+                      disabled={deleteInput !== selectedYear}
+                      style={{ background: deleteInput === selectedYear ? "#b42318" : "#e5e7eb", color: deleteInput === selectedYear ? "#fff" : "#9ca3af", border: "none", borderRadius: 6, padding: "9px 18px", fontSize: 13, fontWeight: 700, cursor: deleteInput === selectedYear ? "pointer" : "not-allowed", transition: "all 0.15s" }}
+                      onClick={function() {
+                        if (deleteInput !== selectedYear) return;
+                        if (onDeleteYear) onDeleteYear(selectedYear);
+                        setSelectedYear("all");
+                        setDeleteStep(0);
+                        setDeleteInput("");
+                      }}>
+                      Supprimer définitivement ({yearCount})
+                    </button>
+                  </div>
+                  {deleteInput && deleteInput !== selectedYear && (
+                    <p style={{ margin: "6px 0 0", fontSize: 12, color: "#b42318" }}>
+                      L'année saisie ne correspond pas — vérifiez le format (ex. : {selectedYear}).
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "32px 16px" }}>
@@ -4489,6 +4569,10 @@ export default function App() {
     }
   }
 
+  function handleDeleteYear(schoolYear) {
+    setRequests((prev) => prev.filter((r) => getSchoolYear(r.date) !== schoolYear));
+  }
+
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
   function renderView() {
@@ -4564,7 +4648,7 @@ export default function App() {
       return <QueueView role="C3" allRequests={requests} label="Concierge" requests={requests.filter(r => r.status === "validee_C3" && r.type === "requisition")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C3")} />;
     }
     if (view === "history") {
-      return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} />;
+      return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
       return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} activeForms={activeForms} onUpdateActiveForms={setActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={setStatusDefinitions} />;
