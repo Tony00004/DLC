@@ -313,11 +313,19 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
         <div style={{ ...S.card, marginBottom: 0 }}>
           <h3 style={S.sectionTitle}>Nouvelle demande</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {Object.entries(REQUEST_TYPES).map(([key, label]) => (
-              <button key={key} style={S.btnPrimary} onClick={() => setView("form_" + key)}>
-                + {label}
-              </button>
-            ))}
+            {Object.entries(REQUEST_TYPES).map(([key, label]) => {
+              const isActive = activeForms ? activeForms[key] !== false : true;
+              return isActive ? (
+                <button key={key} style={S.btnPrimary} onClick={() => setView("form_" + key)}>
+                  + {label}
+                </button>
+              ) : (
+                <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px", borderRadius: 6, border: "1px solid #d1d5db", background: "#f3f4f6", cursor: "not-allowed", opacity: 0.7 }}>
+                  <span style={{ fontSize: 14, color: "#9ca3af", fontWeight: 600 }}>{label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#b42318", background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 4, padding: "2px 8px" }}>Désactivé</span>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1294,6 +1302,7 @@ function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServ
 
   const TABS = [
     { id: "droits",      label: "Gestion des droits",          icon: "👥" },
+    { id: "formulaires", label: "Activation des formulaires",  icon: "🔒" },
     { id: "statuts",     label: "Définitions des statuts",     icon: "🏷️" },
     { id: "achat",       label: "Formulaire — Achat matériel", icon: "🛒" },
     { id: "activite",    label: "Formulaire — Activités/Sorties", icon: "🎒" },
