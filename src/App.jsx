@@ -48,6 +48,21 @@ const REQUEST_TYPES = {
   requisition: "Demande de réquisition interne",
 };
 
+const MATIERES = ["Accueil","Adaptation scolaire","Anglais","Arts","Culture et citoyenneté québécoise (CCQ)","Éducation physique","Français","Mathématiques","Science","Univers social / Histoire","Non applicable","Autre"];
+const NIVEAUX  = ["Accueil","Année transitoire (AT)","EMS","Pré-DÉP","S1","S2","S3","S4","S5","Soutien à l'apprentissage (SA)","Soutien à l'autonomie et la socialisation (SAS)","Autre","Non applicable"];
+
+// Retourne l'utilisateur approbateur correspondant aux règles, ou null si aucune règle ne s'applique.
+function resolveApprobateur(matiere, niveau, rules, users) {
+  if (!rules || rules.length === 0) return null;
+  const rule = rules.find(r => {
+    const mOk = r.matieres.length === 0 || r.matieres.includes(matiere);
+    const nOk = r.niveaux.length === 0   || r.niveaux.includes(niveau);
+    return mOk && nOk;
+  });
+  if (!rule) return null;
+  return users.find(u => u.id === rule.approbateurId) || null;
+}
+
 // ─── Shared CSS-in-JS styles ─────────────────────────────────────────────────
 const S = {
   // Layout
@@ -710,7 +725,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                     ["Achat par moi-même", request.formData.achatPersonnel],
                     ["Conférencier / Conférencière", request.formData.conferencier],
                     ["Activité parascolaire", request.formData.parascolaire],
-                    ["Budget passion", request.formData.budgetPassion],
+                    ["Budget concentration (passion)", request.formData.budgetPassion],
                   ].map(([label, val]) => val ? (
                     <div key={label} style={{ marginBottom: 4 }}>
                       <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
@@ -1278,10 +1293,12 @@ function QueueView({ role, label, requests, allRequests, user, onAction, onBack,
 }
 
 // ─── Admin View (role D) ──────────────────────────────────────────────────────
-function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions }) {
+function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [newServiceType, setNewServiceType] = useState("");
+  const [newNiveau,      setNewNiveau]      = useState("");
+  const [newMatiere,     setNewMatiere]     = useState("");
   const [savedMsg, setSavedMsg] = useState("");
 
   function toggleRole(userId, role) {
@@ -1301,12 +1318,12 @@ function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServ
   }
 
   const TABS = [
-    { id: "droits",      label: "Gestion des droits",          icon: "👥" },
-    { id: "formulaires", label: "Activation des formulaires",  icon: "🔒" },
-    { id: "statuts",     label: "Définitions des statuts",     icon: "🏷️" },
-    { id: "achat",       label: "Formulaire — Achat matériel", icon: "🛒" },
-    { id: "activite",    label: "Formulaire — Activités/Sorties", icon: "🎒" },
-    { id: "requisition", label: "Formulaire — Réquisition interne", icon: "🔧" },
+    { id: "droits",        label: "Gestion des droits",             icon: "👥" },
+    { id: "approbateurs",  label: "Assignation des approbateurs",   icon: "📋" },
+    { id: "statuts",       label: "Définitions des statuts",        icon: "🏷️" },
+    { id: "achat",         label: "Formulaire — Achat matériel",    icon: "🛒" },
+    { id: "activite",      label: "Formulaire — Activités/Sorties", icon: "🎒" },
+    { id: "requisition",   label: "Formulaire — Réquisition interne", icon: "🔧" },
   ];
 
   const tabBtn = (id) => ({
@@ -1520,42 +1537,120 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
           </div>
         )}
 
-        {/* ── Onglet : Formulaires actifs / inactifs ── */}
-        {activeTab === "formulaires" && (
-          <div>
-            {sectionTitle("Activation des formulaires de demandes", "L'administrateur peut activer ou désactiver chaque type de formulaire. Un formulaire désactivé ne peut plus être soumis par les utilisateurs.")}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 8 }}>
-              {[
-                { key: "achat",      label: "Demande d'achat de matériel",          color: "#0284c7", icon: "🛒" },
-                { key: "activite",   label: "Demande d'activité et de sortie",       color: "#7c3aed", icon: "🎒" },
-                { key: "requisition",label: "Demande de réquisition interne",        color: "#059669", icon: "🔧" },
-              ].map(f => {
-                const isActive = activeForms ? activeForms[f.key] !== false : true;
+        {/* ── Onglet : Assignation des approbateurs ── */}
+        {activeTab === "approbateurs" && (() => {
+          const approbUsers = allUsers.filter(u => u.roles.includes("A") && !u.roles.includes("D"));
+
+          function addRule() {
+            if (approbUsers.length === 0) return;
+            const newId = (approbateurRules.length > 0 ? Math.max(...approbateurRules.map(r => r.id)) : 0) + 1;
+            onUpdateApprobateurRules([...approbateurRules, { id: newId, approbateurId: approbUsers[0].id, matieres: [], niveaux: [] }]);
+          }
+
+          function removeRule(id) {
+            onUpdateApprobateurRules(approbateurRules.filter(r => r.id !== id));
+          }
+
+          function updateRule(id, field, value) {
+            onUpdateApprobateurRules(approbateurRules.map(r => r.id === id ? { ...r, [field]: value } : r));
+          }
+
+          function toggleItem(id, field, item) {
+            const rule = approbateurRules.find(r => r.id === id);
+            if (!rule) return;
+            const arr = rule[field];
+            updateRule(id, field, arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]);
+          }
+
+          const chipStyle = (active) => ({
+            display: "inline-block", padding: "3px 10px", borderRadius: 12, fontSize: 12, cursor: "pointer",
+            fontWeight: active ? 700 : 400, border: `1px solid ${active ? COLORS.vert : "#c8d0d8"}`,
+            background: active ? COLORS.vert + "18" : "#f6f7f9", color: active ? COLORS.vertFonce : COLORS.gris,
+            margin: "3px 3px 3px 0", userSelect: "none",
+          });
+
+          return (
+            <div>
+              {sectionTitle("Assignation des approbateurs", "Définissez quelles matières et quels niveaux sont associés à chaque direction. Le système attribuera automatiquement la direction responsable lors de la soumission d'une demande d'achat ou d'activité.")}
+
+              <div style={{ padding: "12px 16px", background: "#e8f0fe", borderRadius: 8, border: "1px solid #c7d9f5", fontSize: 13, color: "#174ea6", marginBottom: 20 }}>
+                ℹ️ Une règle correspond si <strong>toutes</strong> les conditions non vides sont respectées. Laisser une liste vide signifie « toutes les valeurs ». Si plusieurs règles s'appliquent, la première de la liste est utilisée. Si aucune règle ne s'applique, le demandeur sélectionne la direction manuellement.
+              </div>
+
+              {approbateurRules.length === 0 && (
+                <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 16 }}>Aucune règle définie — les demandeurs choisissent la direction manuellement.</p>
+              )}
+
+              {approbateurRules.map((rule, idx) => {
+                const approbUser = allUsers.find(u => u.id === rule.approbateurId);
                 return (
-                  <div key={f.key} style={{ padding: "20px 24px", borderRadius: 10, border: `2px solid ${isActive ? f.color : "#e5e7eb"}`, background: isActive ? f.color + "08" : "#f9fafb", transition: "all 0.2s" }}>
-                    <div style={{ fontSize: 32, marginBottom: 10 }}>{f.icon}</div>
-                    <div style={{ fontWeight: 700, fontSize: 15, color: isActive ? f.color : "#9ca3af", marginBottom: 6 }}>{f.label}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14 }}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>
-                        <div style={{ position: "relative", width: 44, height: 24 }}
-                          onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(function(prev) { var next = Object.assign({}, prev); next[f.key] = !isActive; return next; }); }}>
-                          <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? f.color : "#d1d5db", transition: "background 0.2s", cursor: "pointer" }} />
-                          <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-                        </div>
-                        <span style={{ color: isActive ? f.color : "#9ca3af" }}>{isActive ? "Actif" : "Inactif"}</span>
-                      </label>
+                  <div key={rule.id} style={{ border: "1px solid #d9dee5", borderRadius: 10, padding: "18px 20px", marginBottom: 16, background: "#fafbfc" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.bleu }}>Règle #{idx + 1}</span>
+                      <button type="button" style={{ ...S.btnDanger, padding: "3px 10px", fontSize: 12 }} onClick={() => removeRule(rule.id)}>✕ Supprimer</button>
+                    </div>
+
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={S.label}>Direction responsable (approbateur)</label>
+                      <select style={{ ...S.select, maxWidth: 300 }} value={rule.approbateurId}
+                        onChange={e => updateRule(rule.id, "approbateurId", Number(e.target.value))}>
+                        {approbUsers.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={S.label}>Matières couvertes <span style={{ color: COLORS.gris, fontWeight: 400, fontSize: 12 }}>(vide = toutes)</span></label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 0 }}>
+                        {MATIERES.filter(m => m !== "Autre").map(m => (
+                          <span key={m} style={chipStyle(rule.matieres.includes(m))} onClick={() => toggleItem(rule.id, "matieres", m)}>{m}</span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={S.label}>Niveaux couverts <span style={{ color: COLORS.gris, fontWeight: 400, fontSize: 12 }}>(vide = tous)</span></label>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 0 }}>
+                        {NIVEAUX.filter(n => n !== "Autre" && n !== "Non applicable").map(n => (
+                          <span key={n} style={chipStyle(rule.niveaux.includes(n))} onClick={() => toggleItem(rule.id, "niveaux", n)}>{n}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 );
               })}
+
+              <button type="button" style={S.btnPrimary} onClick={addRule} disabled={approbUsers.length === 0}>
+                + Ajouter une règle
+              </button>
+              {approbUsers.length === 0 && (
+                <p style={{ color: COLORS.rouge, fontSize: 13, marginTop: 8 }}>Aucun utilisateur avec le rôle Approbateur (A) — assignez d'abord ce rôle dans l'onglet « Gestion des droits ».</p>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── Onglet : Formulaire Achat ── */}
         {activeTab === "achat" && (
           <div>
             {sectionTitle("Modification du formulaire « Demande d'achat de matériel »", "Paramétrez les options disponibles dans ce formulaire.")}
+            {(() => {
+              const isActive = activeForms ? activeForms["achat"] !== false : true;
+              const color = "#0284c7";
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb", marginBottom: 20 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: isActive ? color : "#9ca3af" }}>{isActive ? "✓ Formulaire actif" : "✗ Formulaire inactif"}</div>
+                    <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>{isActive ? "Les utilisateurs peuvent soumettre ce type de demande." : "Ce formulaire est désactivé — aucune nouvelle soumission n'est possible."}</div>
+                  </div>
+                  <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                    onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(prev => ({ ...prev, achat: !isActive })); }}>
+                    <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
+                    <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? color : "#9ca3af", minWidth: 46 }}>{isActive ? "Actif" : "Inactif"}</span>
+                </div>
+              );
+            })()}
 
             <div style={{ padding: "16px 20px", background: "#f6f7f9", borderRadius: 8, border: "1px solid #e5e7eb", marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
@@ -1573,9 +1668,43 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               </p>
             </div>
 
-            <div style={{ padding: "16px 20px", background: "#fff8e1", borderRadius: 8, border: "1px solid #ffe082", fontSize: 13, color: "#7a5800" }}>
-              ℹ️ D'autres paramètres de personnalisation du formulaire (listes de matières, niveaux, fournisseurs, etc.) seront disponibles dans une prochaine version.
-            </div>
+            {/* Listes niveaux / matières (partagées avec form Activité) */}
+            {(() => {
+              const listWidget = (title, list, updateFn, newVal, setNewVal) => (
+                <div style={{ marginTop: 20 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{title}</h4>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                    {list.map((item, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
+                        <span>{item}</span>
+                        <button type="button"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
+                          onClick={() => updateFn(list.filter((_, j) => j !== i))}
+                          title="Retirer">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input style={{ ...S.input, maxWidth: 280 }} placeholder="Nouvel élément…" value={newVal}
+                      onChange={e => setNewVal(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                    <button type="button" style={S.btnPrimary} onClick={() => {
+                      const t = newVal.trim();
+                      if (t && !list.includes(t)) { updateFn([...list, t]); setNewVal(""); }
+                    }}>+ Ajouter</button>
+                  </div>
+                </div>
+              );
+              return (
+                <>
+                  {listWidget("Niveaux disponibles", niveauxList, onUpdateNiveauxList, newNiveau, setNewNiveau)}
+                  {listWidget("Matières disponibles", matieresList, onUpdateMatieresList, newMatiere, setNewMatiere)}
+                  <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 10 }}>
+                    ℹ️ Ces listes s'appliquent aux deux formulaires : Achat de matériel et Activités/Sorties.
+                  </p>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -1583,9 +1712,60 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
         {activeTab === "activite" && (
           <div>
             {sectionTitle("Modification du formulaire « Demande d'activité et de sortie »", "Paramétrez les options disponibles dans ce formulaire.")}
-            <div style={{ padding: "16px 20px", background: "#fff8e1", borderRadius: 8, border: "1px solid #ffe082", fontSize: 13, color: "#7a5800" }}>
-              ℹ️ Les paramètres de personnalisation du formulaire d'activités (types d'activités, niveaux, transport, etc.) seront disponibles dans une prochaine version.
-            </div>
+            {(() => {
+              const isActive = activeForms ? activeForms["activite"] !== false : true;
+              const color = "#7c3aed";
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb", marginBottom: 20 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: isActive ? color : "#9ca3af" }}>{isActive ? "✓ Formulaire actif" : "✗ Formulaire inactif"}</div>
+                    <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>{isActive ? "Les utilisateurs peuvent soumettre ce type de demande." : "Ce formulaire est désactivé — aucune nouvelle soumission n'est possible."}</div>
+                  </div>
+                  <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                    onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(prev => ({ ...prev, activite: !isActive })); }}>
+                    <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
+                    <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? color : "#9ca3af", minWidth: 46 }}>{isActive ? "Actif" : "Inactif"}</span>
+                </div>
+              );
+            })()}
+            {(() => {
+              const listWidget = (title, list, updateFn, newVal, setNewVal) => (
+                <div style={{ marginTop: 20 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{title}</h4>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                    {list.map((item, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
+                        <span>{item}</span>
+                        <button type="button"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
+                          onClick={() => updateFn(list.filter((_, j) => j !== i))}
+                          title="Retirer">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input style={{ ...S.input, maxWidth: 280 }} placeholder="Nouvel élément…" value={newVal}
+                      onChange={e => setNewVal(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                    <button type="button" style={S.btnPrimary} onClick={() => {
+                      const t = newVal.trim();
+                      if (t && !list.includes(t)) { updateFn([...list, t]); setNewVal(""); }
+                    }}>+ Ajouter</button>
+                  </div>
+                </div>
+              );
+              return (
+                <>
+                  {listWidget("Niveaux disponibles (Niveau(x) concerné(s))", niveauxList, onUpdateNiveauxList, newNiveau, setNewNiveau)}
+                  {listWidget("Matières disponibles (Matière(s) concernée(s))", matieresList, onUpdateMatieresList, newMatiere, setNewMatiere)}
+                  <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 10 }}>
+                    ℹ️ Ces listes s'appliquent aux deux formulaires : Achat de matériel et Activités/Sorties.
+                  </p>
+                </>
+              );
+            })()}
           </div>
         )}
 
@@ -1593,6 +1773,24 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
         {activeTab === "requisition" && (
           <div>
             {sectionTitle("Modification du formulaire « Demande de réquisition interne »", "Gérez les types de service disponibles dans ce formulaire.")}
+            {(() => {
+              const isActive = activeForms ? activeForms["requisition"] !== false : true;
+              const color = "#059669";
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb", marginBottom: 20 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: isActive ? color : "#9ca3af" }}>{isActive ? "✓ Formulaire actif" : "✗ Formulaire inactif"}</div>
+                    <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>{isActive ? "Les utilisateurs peuvent soumettre ce type de demande." : "Ce formulaire est désactivé — aucune nouvelle soumission n'est possible."}</div>
+                  </div>
+                  <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                    onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(prev => ({ ...prev, requisition: !isActive })); }}>
+                    <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
+                    <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? color : "#9ca3af", minWidth: 46 }}>{isActive ? "Actif" : "Inactif"}</span>
+                </div>
+              );
+            })()}
 
             <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Types de service disponibles</h4>
             <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 14 }}>
@@ -1653,7 +1851,7 @@ function F({ label, required: req, children }) {
 }
 
 // ─── Form: Achat de matériel ──────────────────────────────────────────────────
-function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove }) {
+function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
 
@@ -1667,6 +1865,7 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
   const [niveau,        setNiveau]        = useState(fd.niveau || "");
   const [autreNiveau,   setAutreNiveau]   = useState(fd.autreNiveau || "");
   const [direction,     setDirection]     = useState(fd.directionResponsable || "");
+  const [dirAutoAssigned, setDirAutoAssigned] = useState(false);
   const [fournisseur,   setFournisseur]   = useState(fd.fournisseurPrincipal || "");
   const [nature,        setNature]        = useState(fd.natureActivite || "");
   const [achatPersonnel,setAchatPersonnel]= useState(fd.achatPersonnel || "");
@@ -1685,6 +1884,14 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
   const total = rows.reduce((s, r) => s + (parseFloat(r.soustotal) || 0), 0);
 
   const approb = allUsers.filter(u => u.roles.includes("A") && !u.roles.includes("D"));
+
+  // Auto-assign direction from rules whenever matière or niveau changes
+  useEffect(() => {
+    if (!matiere && !niveau) return;
+    const resolved = resolveApprobateur(matiere, niveau, approbateurRules, allUsers);
+    if (resolved) { setDirection(resolved.name); setDirAutoAssigned(true); }
+    else { setDirAutoAssigned(false); }
+  }, [matiere, niveau]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function majSoustotal(idx, newQty, newPrix, newSansTaxe) {
     const q = parseFloat(newQty) || 0;
@@ -1842,9 +2049,7 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
           <F label="Matière" required>
             <select style={S.select} value={matiere} onChange={e => setMatiere(e.target.value)}>
               <option value="">Sélectionnez</option>
-              {["Accueil","Adaptation scolaire","Anglais","Arts","Culture et citoyenneté québécoise (CCQ)","Éducation physique","Français","Mathématiques","Science","Univers social / Histoire","Non applicable","Autre"].map(m => (
-                <option key={m} value={m}>{m}</option>
-              ))}
+              {matieresList.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             {matiere === "Arts" && (
               <div style={{ marginTop: 8 }}>
@@ -1864,19 +2069,28 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
           <F label="Niveau" required>
             <select style={S.select} value={niveau} onChange={e => setNiveau(e.target.value)}>
               <option value="">Sélectionnez</option>
-              {["Accueil","Année transitoire (AT)","EMS","Pré-DÉP","S1","S2","S3","S4","S5","Soutien à l'apprentissage (SA)","Soutien à l'autonomie et la socialisation (SAS)","Autre","Non applicable"].map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
+              {niveauxList.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
             {niveau === "Autre" && (
               <input style={{ ...S.input, marginTop: 6 }} placeholder="Précisez le niveau" value={autreNiveau} onChange={e => setAutreNiveau(e.target.value)} />
             )}
           </F>
-          <F label="Direction responsable" required>
-            <select style={S.select} value={direction} onChange={e => setDirection(e.target.value)}>
-              <option value="">Sélectionnez</option>
-              {approb.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
-            </select>
+          <F label={<>Direction responsable {dirAutoAssigned && <span style={{ color: "#0284c7", fontSize: 11, fontWeight: 400, marginLeft: 4 }}>(auto-assignée)</span>}</>} required>
+            {dirAutoAssigned ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ flex: 1, border: "1px solid #bfc7d1", borderRadius: 6, padding: "9px 12px", fontSize: 14, background: "#f0f7ff", color: COLORS.bleu, fontWeight: 600 }}>
+                  {direction}
+                </div>
+                <button type="button" style={{ ...S.btn, fontSize: 12, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setDirAutoAssigned(false)}>
+                  Modifier
+                </button>
+              </div>
+            ) : (
+              <select style={S.select} value={direction} onChange={e => setDirection(e.target.value)}>
+                <option value="">Sélectionnez</option>
+                {approb.map(u => <option key={u.id} value={u.name}>{u.name}</option>)}
+              </select>
+            )}
           </F>
           <F label="Fournisseur principal">
             <input style={S.input} value={fournisseur} onChange={e => setFournisseur(e.target.value)} />
@@ -1893,7 +2107,7 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
             { label: "Demande en lien avec un conférencier ou une conférencière", val: conferencier, set: setConferencier,
               warning: "Dans un minimum de trois semaines avant la conférence, il est important que le conférencier ou la conférencière remplisse le formulaire « Déclaration relative aux antécédents judiciaires ». Pour plus d'informations, merci de communiquer avec la secrétaire de l'école." },
             { label: "Demande en lien avec une activité parascolaire", val: parascolaire, set: setParascolaire },
-            { label: "Demande en lien avec le budget passion", val: budgetPassion, set: setBudgetPassion },
+            { label: "Demande en lien avec le budget d'une concentration (passion)", val: budgetPassion, set: setBudgetPassion },
           ].map(({ label, val, set, warning }) => (
             <div key={label} style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: 6, border: "1px solid #e5e7eb" }}>
               <label style={{ ...S.label, margin: "0 0 8px", flex: 1 }}>{label} <span style={{ color: COLORS.rouge }}>*</span></label>
@@ -2030,7 +2244,7 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
 }
 
 // ─── Form: Activités et Sorties ───────────────────────────────────────────────
-function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode }) {
+function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
   const [form, setForm] = useState({
@@ -2063,6 +2277,19 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [rechercheResp, setRechercheResp] = useState("");
+  const [dirAutoAssigned, setDirAutoAssigned] = useState(false);
+
+  const approb = allUsers.filter(u => u.roles.includes("A") && !u.roles.includes("D"));
+
+  // Auto-assign direction from rules when niveaux or matières selection changes
+  useEffect(() => {
+    const premierNiveau  = form.niveauxConcernes[0]    || "";
+    const premiereMatiere = form.matieresConcernees[0] || "";
+    if (!premierNiveau && !premiereMatiere) return;
+    const resolved = resolveApprobateur(premiereMatiere, premierNiveau, approbateurRules, allUsers);
+    if (resolved) { setForm(prev => ({ ...prev, directionResponsable: resolved.name })); setDirAutoAssigned(true); }
+    else { setDirAutoAssigned(false); }
+  }, [form.niveauxConcernes, form.matieresConcernees]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleCheck(field, val) {
     setForm((prev) => ({
@@ -2152,8 +2379,8 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
     );
   }
 
-  const niveaux = ["S1","S2","S3","S4","S5","SA","Tremplin","SAS","AT","Accueil","Pré-DEP","Étude-action (EMS)","Toute l'école"];
-  const matieres = ["Accueil","Anglais","Arts","CCQ","Éducation physique","Français","Mathématiques","Science","Univers social / Histoire","Non applicable","Autre"];
+  const niveaux  = niveauxList;
+  const matieres = matieresList;
   const typesTransport = ["Location d'un autobus scolaire ou de ville", "Transport en commun", "À pied", "Non applicable", "Autre"];
 
   const inputDollar = (val, onChange) => (
@@ -2358,20 +2585,31 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode 
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 22px", alignItems: "start", marginBottom: 16 }}>
             <div>
-              <label style={S.label}>Direction responsable<span style={{ color: COLORS.rouge }}> *</span></label>
-              <select style={S.select} value={form.directionResponsable} onChange={e => setForm({ ...form, directionResponsable: e.target.value })}>
-                <option value="">Sélectionnez</option>
-                {allUsers.filter(u => u.roles.includes("A") && !u.roles.includes("D")).map(u => (
-                  <option key={u.id} value={u.name}>{u.name}</option>
-                ))}
-              </select>
+              <label style={S.label}>Direction responsable{dirAutoAssigned && <span style={{ color: "#0284c7", fontSize: 11, fontWeight: 400, marginLeft: 4 }}>(auto-assignée)</span>}<span style={{ color: COLORS.rouge }}> *</span></label>
+              {dirAutoAssigned ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, border: "1px solid #bfc7d1", borderRadius: 6, padding: "9px 12px", fontSize: 14, background: "#f0f7ff", color: COLORS.bleu, fontWeight: 600 }}>
+                    {form.directionResponsable}
+                  </div>
+                  <button type="button" style={{ ...S.btn, fontSize: 12, padding: "6px 12px", whiteSpace: "nowrap" }} onClick={() => setDirAutoAssigned(false)}>
+                    Modifier
+                  </button>
+                </div>
+              ) : (
+                <select style={S.select} value={form.directionResponsable} onChange={e => setForm({ ...form, directionResponsable: e.target.value })}>
+                  <option value="">Sélectionnez</option>
+                  {approb.map(u => (
+                    <option key={u.id} value={u.name}>{u.name}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label style={S.label}>Liste des groupes concernés<span style={{ color: COLORS.rouge }}> *</span></label>
               <input style={S.input} placeholder="Ex: 101, 102, 203..." value={form.groupes} onChange={(e) => setForm({ ...form, groupes: e.target.value })} />
             </div>
             <div>
-              <label style={S.label}>Activité dans le cadre d'une passion ?<span style={{ color: COLORS.rouge }}> *</span></label>
+              <label style={S.label}>Activité dans le cadre d'une concentration (passion) ?<span style={{ color: COLORS.rouge }}> *</span></label>
               <div style={{ display: "flex", gap: 16 }}>
                 {["Oui", "Non"].map((v) => (
                   <label key={v} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
@@ -3316,7 +3554,7 @@ function FormAchatEdit({ request, user, allUsers, onSave, onBack }) {
             { field: "achatPersonnel", label: "Demande que j'irai acheter par moi-même" },
             { field: "conferencier", label: "Demande en lien avec un conférencier ou une conférencière" },
             { field: "parascolaire", label: "Demande en lien avec une activité parascolaire" },
-            { field: "budgetPassion", label: "Demande en lien avec le budget passion" },
+            { field: "budgetPassion", label: "Demande en lien avec le budget d'une concentration (passion)" },
           ].map(({ field, label }) => (
             <div key={field} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 14px", background: "#f9fafb", borderRadius: 6, border: "1px solid #e5e7eb" }}>
               <label style={{ ...S.label, margin: 0, flex: 1 }}>{label}<span style={{ color: COLORS.rouge }}> *</span></label>
@@ -3334,7 +3572,7 @@ function FormAchatEdit({ request, user, allUsers, onSave, onBack }) {
 
         {form.budgetPassion === "Oui" && (
           <div style={{ marginTop: 10, padding: "12px 14px", background: "#e0f2fe", border: "1px solid #7dd3fc", borderRadius: 6, color: "#075985", fontSize: 13 }}>
-            ℹ️ Il appartient au personnel enseignant de comptabiliser les dépenses de sa passion pour respecter le budget attitré.
+            ℹ️ Il appartient au personnel enseignant de comptabiliser les dépenses de sa concentration (passion) pour respecter le budget attitré.
           </div>
         )}
 
@@ -3406,7 +3644,7 @@ function FormAchatEdit({ request, user, allUsers, onSave, onBack }) {
 
 
 // ─── Formulaire d'édition de demande d'activité/sortie ──────────────────────
-function FormActiviteEdit({ request, user, allUsers, onSave, onBack }) {
+function FormActiviteEdit({ request, user, allUsers, onSave, onBack, niveauxList = NIVEAUX, matieresList = MATIERES }) {
   const fd = request.formData || {};
   const today = new Date().toISOString().slice(0, 10);
 
@@ -3464,8 +3702,8 @@ function FormActiviteEdit({ request, user, allUsers, onSave, onBack }) {
   }
 
   const isSortie = ["Sortie", "Sortie éducative"].includes(form.typeActivite);
-  const niveaux = ["Accueil", "Année transitoire (AT)", "EMS", "Pré-DÉP", "S1", "S2", "S3", "S4", "S5", "Soutien à l'apprentissage (SA)", "Soutien à l'autonomie et la socialisation (SAS)", "Autre"];
-  const matieres = ["Accueil", "Adaptation scolaire", "Anglais", "Arts", "Culture et citoyenneté québécoise (CCQ)", "Éducation physique", "Français", "Mathématiques", "Science", "Univers social / Histoire", "Non applicable", "Autre"];
+  const niveaux  = niveauxList;
+  const matieres = matieresList;
   const typesPassion = ["Arts", "Musique", "Sports", "Sciences", "Langues", "Autres"];
 
   function handleSave() {
@@ -4096,6 +4334,12 @@ export default function App() {
   const [prevView, setPrevView] = useState("dashboard");
   const [serviceTypes, setServiceTypes] = useState(["Déplacement de mobilier", "Autres (précisez)"]);
   const [activeForms, setActiveForms] = useState({ achat: true, activite: true, requisition: true });
+  const [approbateurRules, setApprobateurRules] = useState([
+    { id: 1, approbateurId: 2, matieres: [], niveaux: ["Accueil","Année transitoire (AT)","S1","S2","S3","Soutien à l'apprentissage (SA)","Soutien à l'autonomie et la socialisation (SAS)"] },
+    { id: 2, approbateurId: 8, matieres: [], niveaux: ["S4","S5","EMS","Pré-DÉP"] },
+  ]);
+  const [niveauxList, setNiveauxList] = useState([...NIVEAUX]);
+  const [matieresList, setMatieresList] = useState([...MATIERES]);
   const [statusDefinitions, setStatusDefinitions] = useState({
     soumise:   "Demande envoyée à la direction répondante",
     acceptee:  "Demande acceptée par votre direction répondante et envoyée à la gestionnaire administrative",
@@ -4580,10 +4824,10 @@ export default function App() {
       return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} />;
     }
     if (view === "form_achat") {
-      return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} />;
+      return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} />;
     }
     if (view === "form_activite") {
-      return <FormActivite user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} />;
+      return <FormActivite user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} />;
     }
     if (view === "form_requisition") {
       return <FormRequisition user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} serviceTypes={serviceTypes} />;
@@ -4610,6 +4854,9 @@ export default function App() {
         onSubmit={handleSaveEdit}
         onApprove={canApproveOnEdit ? handleSaveEditAndApprove : undefined}
         onBack={() => { setEditContext(null); setView("detail"); }}
+        approbateurRules={approbateurRules}
+        niveauxList={niveauxList}
+        matieresList={matieresList}
       />;
     }
     if (view === "edit_activite" && editContext) {
@@ -4620,6 +4867,9 @@ export default function App() {
         editMode={true}
         onSubmit={handleSaveEdit}
         onBack={() => { setEditContext(null); setView("detail"); }}
+        approbateurRules={approbateurRules}
+        niveauxList={niveauxList}
+        matieresList={matieresList}
       />;
     }
     if (view === "edit_requisition" && editContext) {
@@ -4651,7 +4901,7 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} activeForms={activeForms} onUpdateActiveForms={setActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={setStatusDefinitions} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} activeForms={activeForms} onUpdateActiveForms={setActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={setStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={setApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={setNiveauxList} matieresList={matieresList} onUpdateMatieresList={setMatieresList} />;
     }
     return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} />;
   }
