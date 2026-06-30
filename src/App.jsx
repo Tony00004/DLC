@@ -34,12 +34,14 @@ let COUT_LIBERATION_DEFAULT = "233.34";
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 const STATUSES = {
-  soumise: { label: "Soumise", color: "#64748b" },
-  acceptee: { label: "Approuvée", color: "#0284c7" },
-  validee: { label: "Vérifiée", color: "#7c3aed" },
-  traitee: { label: "Traitée", color: "#008c4a" },
-  refusee: { label: "Refusée", color: "#b42318" },
-  annulee: { label: "Annulée", color: "#78350f" },
+  soumise:               { label: "Soumise",                color: "#64748b" },
+  acceptee:              { label: "Approuvée",              color: "#0284c7" },
+  validee:               { label: "Vérifiée",               color: "#7c3aed" },
+  commandee:             { label: "En commande",            color: "#ea580c" },
+  partiellement_traitee: { label: "Partiellement complétée", color: "#f59e0b" },
+  traitee:               { label: "Traitée",                color: "#008c4a" },
+  refusee:               { label: "Refusée",                color: "#b42318" },
+  annulee:               { label: "Annulée",                color: "#78350f" },
 };
 
 const REQUEST_TYPES = {
@@ -181,7 +183,7 @@ function Topbar({ user, onLogout, setView, requests }) {
               <div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{user.name}</div>
               <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
                 {user.roles.length > 0
-                  ? user.roles.map(r => r === "A" ? "Approbateur" : r === "B" ? "Vérificateur" : r === "C1" ? "Secrétaire" : r === "C2" ? "Magasinier" : r === "C3" ? "Concierge" : r === "D" ? "Administrateur" : r).join(", ")
+                  ? user.roles.map(r => r === "A" ? "Approbateur" : r === "B" ? "Vérificateur" : r === "C1" ? "Agent administratif" : r === "C2" ? "Magasinier" : r === "C3" ? "Concierge" : r === "D" ? "Administrateur" : r).join(", ")
                   : "Utilisateur"}
               </div>
             </div>
@@ -260,7 +262,7 @@ function LoginScreen({ onLogin }) {
                 { email: "jmartin",   pwd: "1234",  nom: "Jean Martin",     role: "Approbateur",    color: "#0284c7" },
                 { email: "plefebvre", pwd: "1234",  nom: "Pierre Lefebvre", role: "Approbateur",    color: "#0284c7" },
                 { email: "sbernard",  pwd: "1234",  nom: "Sophie Bernard",  role: "Vérificateur",   color: "#7c3aed" },
-                { email: "ltremblay", pwd: "1234",  nom: "Luc Tremblay",   role: "Secrétaire",     color: "#ea580c" },
+                { email: "ltremblay", pwd: "1234",  nom: "Luc Tremblay",   role: "Agent administratif",     color: "#ea580c" },
                 { email: "pgagnon",   pwd: "1234",  nom: "Paula Gagnon",   role: "Magasinier",     color: "#0891b2" },
                 { email: "mcaron",    pwd: "1234",  nom: "Michel Caron",   role: "Concierge",      color: "#059669" },
                 { email: "admin",     pwd: "admin", nom: "Admin Système",  role: "Administrateur", color: "#dc2626" },
@@ -294,8 +296,8 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
   const pendingA  = requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
   const pendingB  = requests.filter(r => r.status === "acceptee" && user.roles.includes("B"));
-  const pendingC1 = requests.filter(r => r.status === "validee" && ["achat","activite"].includes(r.type) && user.roles.includes("C1"));
-  const pendingC2 = requests.filter(r => ((["validee","commandee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition")) && user.roles.includes("C2"));
+  const pendingC1 = requests.filter(r => ["validee","commandee","partiellement_traitee"].includes(r.status) && ["achat","activite"].includes(r.type) && user.roles.includes("C1"));
+  const pendingC2 = requests.filter(r => ((["validee","commandee","partiellement_traitee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition")) && user.roles.includes("C2"));
   const pendingC3 = requests.filter(r => r.status === "validee_C3" && r.type === "requisition" && user.roles.includes("C3"));
 
   function statusCount(st) {
@@ -469,7 +471,7 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
             {[
               { role: "A",  label: "Approbateur",  count: pendingA.length,  color: "#0284c7", queue: "queue_A" },
               { role: "B",  label: "Vérificateur", count: pendingB.length,  color: "#7c3aed", queue: "queue_B" },
-              { role: "C1", label: "Secrétaire",   count: pendingC1.length, color: "#ea580c", queue: "queue_C1" },
+              { role: "C1", label: "Agent administratif",   count: pendingC1.length, color: "#ea580c", queue: "queue_C1" },
               { role: "C2", label: "Magasinier",   count: pendingC2.length, color: "#0891b2", queue: "queue_C2" },
               { role: "C3", label: "Concierge",    count: pendingC3.length, color: COLORS.vert, queue: "queue_C3" },
             ].filter(item => user.roles.includes(item.role)).map(item => (
@@ -607,16 +609,16 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                      && (canActRole("A") || isAdmin);
   // Vérification : achat+activite après approbation, réquisition dès soumise(=acceptee)
   const canVerify = request.status === "acceptee" && (canActRole("B") || isAdmin);
-  // Secrétaire (C1) traite achat/activite quand validée
-  const canSecretary = request.status === "validee"
+  // Agent administratif (C1) traite achat/activite
+  const canSecretary = ["validee","commandee","partiellement_traitee"].includes(request.status)
                        && ["achat","activite"].includes(request.type)
                        && (canActRole("C1") || isAdmin);
-  // Magasinier (C2) peut aussi compléter une demande d'achat validée ou en commande
+  // Magasinier (C2) — achat validée, en commande ou partiellement complétée
   const canMagasinier = (
-    (["validee","commandee"].includes(request.status) && request.type === "achat") ||
+    (["validee","commandee","partiellement_traitee"].includes(request.status) && request.type === "achat") ||
     (request.status === "validee_C2" && request.type === "requisition")
   ) && (canActRole("C2") || isAdmin);
-  // Secrétaire peut marquer "en commande" une demande d'achat validée
+  // Agent administratif peut marquer "en commande" une demande d'achat validée
   const canMarkCommande = request.status === "validee"
                           && request.type === "achat"
                           && (canActRole("C1") || isAdmin);
@@ -735,7 +737,8 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                 </div>
                 {request.formData._rows && request.formData._rows.length > 0 && (() => {
                   const canManageItems = (canActRole("C1") || canActRole("C2") || isAdmin)
-                    && ["validee","commandee","traitee"].includes(request.status);
+                    && ["validee","commandee","partiellement_traitee","traitee"].includes(request.status);
+                  const canManageCommandeCol = (canActRole("C1") || isAdmin) && canManageItems;
                   const rows = request.formData._rows;
                   function toggleItem(idx, field) {
                     if (!canManageItems) return;
@@ -758,7 +761,8 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                           <thead>
                             <tr>
                               {["#","Qté","Nom du produit","Description","N° produit","Lien Web","Prix unit.","Sous-total",
-                                ...(canManageItems ? ["✅ Commandé","📬 Reçu"] : [])
+                                ...(canManageCommandeCol ? ["✅ Commandé"] : []),
+                                ...(canManageItems ? ["📬 Reçu"] : [])
                               ].map((h) => (
                                 <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 11,
                                   textAlign: h.startsWith("✅")||h.startsWith("📬") ? "center" : undefined,
@@ -779,21 +783,21 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                                 <td style={S.td}>{row.lien ? <a href={row.lien} target="_blank" rel="noreferrer" style={{ color: COLORS.vert, fontSize: 11 }}>Lien</a> : ""}</td>
                                 <td style={{ ...S.td, textAlign: "right" }}>{row.prixUnitaire ? row.prixUnitaire + " $" : ""}</td>
                                 <td style={{ ...S.td, textAlign: "right", fontWeight: 700 }}>{row.soustotal ? row.soustotal + " $" : ""}</td>
+                                {canManageCommandeCol && (
+                                  <td style={{ ...S.td, textAlign: "center" }}>
+                                    <input type="checkbox" checked={!!row.commande}
+                                      onChange={() => toggleItem(idx, "commande")}
+                                      style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#0284c7" }}
+                                      title="Cocher une fois commandé" />
+                                  </td>
+                                )}
                                 {canManageItems && (
-                                  <>
-                                    <td style={{ ...S.td, textAlign: "center" }}>
-                                      <input type="checkbox" checked={!!row.commande}
-                                        onChange={() => toggleItem(idx, "commande")}
-                                        style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#0284c7" }}
-                                        title="Cocher une fois commandé" />
-                                    </td>
-                                    <td style={{ ...S.td, textAlign: "center" }}>
-                                      <input type="checkbox" checked={!!row.recu}
-                                        onChange={() => { if (!row.commande) { alert("Cochez d'abord que l'item a été commandé."); return; } toggleItem(idx, "recu"); }}
-                                        style={{ width: 16, height: 16, cursor: row.commande ? "pointer" : "not-allowed", accentColor: "#059669", opacity: row.commande ? 1 : 0.35 }}
-                                        title={row.commande ? "Cocher une fois reçu à l'école" : "À commander d'abord"} />
-                                    </td>
-                                  </>
+                                  <td style={{ ...S.td, textAlign: "center" }}>
+                                    <input type="checkbox" checked={!!row.recu}
+                                      onChange={() => toggleItem(idx, "recu")}
+                                      style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#059669" }}
+                                      title="Cocher une fois reçu à l'école" />
+                                  </td>
                                 )}
                               </tr>
                             ))}
@@ -802,7 +806,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                             <tr style={{ background: "#e8f5ee" }}>
                               <td colSpan={7} style={{ ...S.td, textAlign: "right", fontWeight: 700, fontSize: 13 }}>Total de la commande</td>
                               <td style={{ ...S.td, fontWeight: 700, fontSize: 13, textAlign: "right", whiteSpace: "nowrap" }}>{request.formData.total}</td>
-                              {canManageItems && (
+                              {canManageCommandeCol && (
                                 <td style={{ ...S.td, textAlign: "center" }}>
                                   <input type="checkbox"
                                     title="Tout cocher — Commandé"
@@ -821,7 +825,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                                     checked={rows.length > 0 && rows.every(r => r.recu)}
                                     onChange={e => {
                                       const val = e.target.checked;
-                                      if (onUpdateItems) onUpdateItems(request.id, rows.map(r => ({ ...r, commande: val ? true : r.commande, recu: val })));
+                                      if (onUpdateItems) onUpdateItems(request.id, rows.map(r => ({ ...r, recu: val })));
                                     }}
                                     style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#059669" }} />
                                 </td>
@@ -1004,7 +1008,7 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                 </>
               )}
 
-              {/* ── Secrétaire (C1) — achat et activité ── */}
+              {/* ── Agent administratif (C1) — achat et activité ── */}
               {canSecretary && (
                 <>
                   {canMarkCommande && request.type === "achat" && (
@@ -1018,25 +1022,14 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                     const certainsRecus = rows.some(r => r.recu) && !tousRecus;
                     return (
                       <>
-                        {tousRecus && (
-                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
-                            Confirmer réception complète et compléter
-                          </button>
-                        )}
                         {certainsRecus && (
-                          <button style={btnOrange} onClick={() => {
-                            if (window.confirm("Confirmer la réception partielle ?\\n\\nLa demande restera dans la file d'attente.")) {
-                              if (onUpdateItems) onUpdateItems(request.id, rows);
-                            }
-                          }}>
-                            Confirmer réception partielle
+                          <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
+                            Enregistrer réception partielle
                           </button>
                         )}
-                        {!tousRecus && !certainsRecus && (
-                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
-                            Marquer comme complétée
-                          </button>
-                        )}
+                        <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
+                          {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
+                        </button>
                       </>
                     );
                   })()}
@@ -1049,30 +1042,21 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
                 </>
               )}
 
-              {/* ── Magasinier (C2) — achat validée ou en commande ── */}
+              {/* ── Magasinier (C2) — achat validée, en commande ou partiellement complétée ── */}
               {canMagasinier && !canSecretary && (() => {
                 const rows = request.formData?._rows || [];
                 const tousRecus = rows.length > 0 && rows.every(r => r.recu);
                 const certainsRecus = rows.some(r => r.recu) && !tousRecus;
                 return (
                   <>
-                    {tousRecus ? (
-                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
-                        Confirmer réception complète et compléter
-                      </button>
-                    ) : certainsRecus ? (
-                      <button style={btnOrange} onClick={() => {
-                        if (window.confirm("Confirmer la réception partielle ?\\n\\nLa demande restera dans la file d'attente.")) {
-                          if (onUpdateItems) onUpdateItems(request.id, rows);
-                        }
-                      }}>
-                        Confirmer réception partielle
-                      </button>
-                    ) : (
-                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
-                        Confirmer réception et compléter
+                    {certainsRecus && (
+                      <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
+                        Enregistrer réception partielle
                       </button>
                     )}
+                    <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
+                      {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
+                    </button>
                     <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                   </>
                 );
@@ -1148,7 +1132,7 @@ function QueueView({ role, label, requests, allRequests, user, onAction, onBack,
   const filtered = requests; // demandes en attente (pré-filtrées)
   const actionMap = { A: "acceptee", B: "validee", C1: "traitee", C2: "traitee", C3: "traitee" };
   const roleLabels = { A: "Approuver", B: "Vérifier", C1: "Traiter", C2: "Traiter", C3: "Traiter" };
-  const roleDisplay = label || (role === "A" ? "Approbateur" : role === "B" ? "Vérificateur" : role === "C1" ? "Secrétaire" : role === "C2" ? "Magasinier" : role === "C3" ? "Concierge" : role);
+  const roleDisplay = label || (role === "A" ? "Approbateur" : role === "B" ? "Vérificateur" : role === "C1" ? "Agent administratif" : role === "C2" ? "Magasinier" : role === "C3" ? "Concierge" : role);
 
   // Demandes traitées : celles où l'utilisateur a agi (dans l'historique)
   const traitees = allRequests ? allRequests.filter(r =>
@@ -1165,7 +1149,7 @@ function QueueView({ role, label, requests, allRequests, user, onAction, onBack,
         {(role === "A" || role === "B") && (
           <button onClick={() => {
             var CATS = { achat: "Demande d'achat de matériel", activite: "Demande d'activité et de sortie", requisition: "Demande de réquisition interne" };
-            var STATUTS = { soumise:"Soumise", acceptee:"Approuvée", validee:"Vérifiée", validee_C2:"Attribuée — Magasinier", validee_C3:"Attribuée — Concierge", commandee:"En commande", traitee:"Traitée", refusee:"Refusée", annulee:"Annulée" };
+            var STATUTS = { soumise:"Soumise", acceptee:"Approuvée", validee:"Vérifiée", validee_C2:"Attribuée — Magasinier", validee_C3:"Attribuée — Concierge", commandee:"En commande", partiellement_traitee:"Partiellement complétée", traitee:"Traitée", refusee:"Refusée", annulee:"Annulée" };
             var headers = ["Numéro", "Catégorie", "Titre", "Demandeur", "Statut", "Prix total", "Mon action", "Date action"];
             var allRows = filtered.concat(traitees);
             var rows = allRows.map(function(r) {
@@ -1378,7 +1362,7 @@ function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServ
               {[
                 { role: "A",  label: "Approbateur",    desc: "Approuve les demandes d'achat et d'activité",   color: "#0284c7" },
                 { role: "B",  label: "Vérificateur",   desc: "Vérifie toutes les demandes approuvées",        color: "#7c3aed" },
-                { role: "C1", label: "Secrétaire",     desc: "Traite les achats et activités vérifiés",       color: "#ea580c" },
+                { role: "C1", label: "Agent administratif",     desc: "Traite les achats et activités vérifiés",       color: "#ea580c" },
                 { role: "C2", label: "Magasinier",     desc: "Reçoit et complète les commandes d'achat",      color: "#0891b2" },
                 { role: "C3", label: "Concierge",      desc: "Traite les réquisitions internes vérifiées",    color: "#059669" },
                 { role: "D",  label: "Administrateur", desc: "Accès complet au système",                      color: "#dc2626" },
@@ -1440,7 +1424,7 @@ function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServ
                     {[
                       { role: "A",  label: "Approbateur",    color: "#0284c7" },
                       { role: "B",  label: "Vérificateur",   color: "#7c3aed" },
-                      { role: "C1", label: "Secrétaire",     color: "#ea580c" },
+                      { role: "C1", label: "Agent administratif",     color: "#ea580c" },
                       { role: "C2", label: "Magasinier",     color: "#0891b2" },
                       { role: "C3", label: "Concierge",      color: "#059669" },
                       { role: "D",  label: "Administrateur", color: "#dc2626" },
@@ -1512,13 +1496,14 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
             {sectionTitle("Définitions des statuts", "Ces textes s'affichent en bulle d'aide lorsque l'utilisateur survole un statut dans « Mes demandes récentes ».")}
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[
-                { key: "soumise",   label: "Soumise",        color: "#64748b" },
-                { key: "acceptee",  label: "Approuvée",      color: "#0284c7" },
-                { key: "validee",   label: "Vérifiée",       color: "#7c3aed" },
-                { key: "commandee", label: "En commande",    color: "#ea580c" },
-                { key: "traitee",   label: "Traitée",        color: "#008c4a" },
-                { key: "refusee",   label: "Refusée",        color: "#b42318" },
-                { key: "annulee",   label: "Annulée",        color: "#78350f" },
+                { key: "soumise",               label: "Soumise",                color: "#64748b" },
+                { key: "acceptee",              label: "Approuvée",              color: "#0284c7" },
+                { key: "validee",               label: "Vérifiée",               color: "#7c3aed" },
+                { key: "commandee",             label: "En commande",            color: "#ea580c" },
+                { key: "partiellement_traitee", label: "Partiellement complétée", color: "#f59e0b" },
+                { key: "traitee",               label: "Traitée",                color: "#008c4a" },
+                { key: "refusee",               label: "Refusée",                color: "#b42318" },
+                { key: "annulee",               label: "Annulée",                color: "#78350f" },
               ].map(({ key, label, color }) => (
                 <div key={key} style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, alignItems: "center", padding: "12px 16px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
                   <span style={{ ...S.badge(color), fontSize: 13, textAlign: "center" }}>{label}</span>
@@ -1670,16 +1655,30 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
 
             {/* Listes niveaux / matières (partagées avec form Activité) */}
             {(() => {
+              const autreToggle = (list, updateFn) => {
+                const hasAutre = list.includes("Autre");
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: hasAutre ? "#f0fdf4" : "#f9fafb", borderRadius: 8, border: `1px solid ${hasAutre ? "#86efac" : "#e5e7eb"}`, marginTop: 10 }}>
+                    <span style={{ fontSize: 13, flex: 1 }}>Option <strong>« Autre » avec champ à compléter</strong></span>
+                    <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                      onClick={() => updateFn(hasAutre ? list.filter(i => i !== "Autre") : [...list, "Autre"])}>
+                      <div style={{ width: 44, height: 24, borderRadius: 12, background: hasAutre ? COLORS.vert : "#d1d5db", transition: "background 0.2s" }} />
+                      <div style={{ position: "absolute", top: 3, left: hasAutre ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: hasAutre ? COLORS.vert : "#9ca3af", minWidth: 46 }}>{hasAutre ? "Actif" : "Inactif"}</span>
+                  </div>
+                );
+              };
               const listWidget = (title, list, updateFn, newVal, setNewVal) => (
                 <div style={{ marginTop: 20 }}>
                   <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{title}</h4>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                    {list.map((item, i) => (
+                    {list.filter(item => item !== "Autre").map((item, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
                         <span>{item}</span>
                         <button type="button"
                           style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
-                          onClick={() => updateFn(list.filter((_, j) => j !== i))}
+                          onClick={() => updateFn(list.filter(x => x !== item))}
                           title="Retirer">✕</button>
                       </div>
                     ))}
@@ -1690,9 +1689,10 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                       onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
                     <button type="button" style={S.btnPrimary} onClick={() => {
                       const t = newVal.trim();
-                      if (t && !list.includes(t)) { updateFn([...list, t]); setNewVal(""); }
+                      if (t && t !== "Autre" && !list.includes(t)) { updateFn([...list, t]); setNewVal(""); }
                     }}>+ Ajouter</button>
                   </div>
+                  {autreToggle(list, updateFn)}
                 </div>
               );
               return (
@@ -1731,16 +1731,30 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               );
             })()}
             {(() => {
+              const autreToggle = (list, updateFn) => {
+                const hasAutre = list.includes("Autre");
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: hasAutre ? "#f0fdf4" : "#f9fafb", borderRadius: 8, border: `1px solid ${hasAutre ? "#86efac" : "#e5e7eb"}`, marginTop: 10 }}>
+                    <span style={{ fontSize: 13, flex: 1 }}>Option <strong>« Autre » avec champ à compléter</strong></span>
+                    <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                      onClick={() => updateFn(hasAutre ? list.filter(i => i !== "Autre") : [...list, "Autre"])}>
+                      <div style={{ width: 44, height: 24, borderRadius: 12, background: hasAutre ? COLORS.vert : "#d1d5db", transition: "background 0.2s" }} />
+                      <div style={{ position: "absolute", top: 3, left: hasAutre ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: hasAutre ? COLORS.vert : "#9ca3af", minWidth: 46 }}>{hasAutre ? "Actif" : "Inactif"}</span>
+                  </div>
+                );
+              };
               const listWidget = (title, list, updateFn, newVal, setNewVal) => (
                 <div style={{ marginTop: 20 }}>
                   <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{title}</h4>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                    {list.map((item, i) => (
+                    {list.filter(item => item !== "Autre").map((item, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
                         <span>{item}</span>
                         <button type="button"
                           style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
-                          onClick={() => updateFn(list.filter((_, j) => j !== i))}
+                          onClick={() => updateFn(list.filter(x => x !== item))}
                           title="Retirer">✕</button>
                       </div>
                     ))}
@@ -1751,9 +1765,10 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                       onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
                     <button type="button" style={S.btnPrimary} onClick={() => {
                       const t = newVal.trim();
-                      if (t && !list.includes(t)) { updateFn([...list, t]); setNewVal(""); }
+                      if (t && t !== "Autre" && !list.includes(t)) { updateFn([...list, t]); setNewVal(""); }
                     }}>+ Ajouter</button>
                   </div>
+                  {autreToggle(list, updateFn)}
                 </div>
               );
               return (
@@ -3956,7 +3971,7 @@ function getSchoolYear(dateStr) {
 function exportExcel(filtered, filename) {
   var STATUTS = {
     soumise: "Soumise", acceptee: "Approuvée", validee: "Vérifiée",
-    commandee: "En commande", traitee: "Traitée / Complétée",
+    commandee: "En commande", partiellement_traitee: "Partiellement complétée", traitee: "Traitée / Complétée",
     refusee: "Refusée", annulee: "Annulée",
   };
   var CATS = {
@@ -4345,7 +4360,8 @@ export default function App() {
     acceptee:  "Demande acceptée par votre direction répondante et envoyée à la gestionnaire administrative",
     validee:   "Demande acceptée par la gestionnaire administrative et en attente d'être traitée par l'agent administratif",
     traitee:   "Demande terminée",
-    commandee: "Articles commandés — en attente de réception",
+    commandee:             "Articles commandés — en attente de réception",
+    partiellement_traitee: "Certains articles ont été reçus — la demande est en attente de réception complète",
     refusee:   "Demande refusée par la direction ou la gestionnaire administrative",
     annulee:   "Demande annulée par le demandeur ou la demandeuse",
   });
@@ -4668,17 +4684,18 @@ export default function App() {
     setRequests((prev) => [newReq, ...prev]);
   }
 
-  function handleAction(reqId, newStatus, comment, actionUser, adminComment = "") {
+  function handleAction(reqId, newStatus, comment, actionUser, adminComment = "", updatedRows = null) {
     const today = new Date().toISOString().slice(0, 10);
 
     // Messages de confirmation selon l'action
     const confirmMessages = {
       acceptee:   "Confirmer l'approbation de cette demande ?",
-      validee:    "Confirmer la vérification ?\n\nLa demande sera transmise à la secrétaire pour traitement.",
+      validee:    "Confirmer la vérification ?\n\nLa demande sera transmise à l'agent administratif pour traitement.",
       validee_C2: "Attribuer cette réquisition au Magasinier ?\n\nIl pourra la traiter et la compléter.",
       validee_C3: "Attribuer cette réquisition au Concierge ?\n\nIl pourra la traiter et la compléter.",
-      commandee:  "Confirmer que les items ont été commandés ?",
-      traitee:    "Confirmer que la demande est complétée / traitée ?\n\nCette action est finale.",
+      commandee:             "Confirmer que les items ont été commandés ?",
+      partiellement_traitee: "Enregistrer la réception partielle ?\n\nLa demande restera accessible au magasinier.",
+      traitee:               "Confirmer que la demande est complétée / traitée ?\n\nCette action est finale.",
       refusee:    "Confirmer le refus de cette demande ?",
       annulee:    "Confirmer l'annulation de cette demande ?",
     };
@@ -4690,6 +4707,7 @@ export default function App() {
     const updatedReq = (r) => ({
       ...r,
       status: newStatus,
+      formData: updatedRows ? { ...r.formData, _rows: updatedRows } : r.formData,
       history: [...(r.history || []), { status: newStatus, by: actionUser.name, date: today, comment: comment || "", adminComment: adminComment || "" }],
     });
 
@@ -4889,10 +4907,10 @@ export default function App() {
       return <QueueView role="B" allRequests={requests} requests={requests.filter(r => r.status === "acceptee")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_B")} />;
     }
     if (view === "queue_C1") {
-      return <QueueView role="C1" allRequests={requests} label="Secrétaire" requests={requests.filter(r => r.status === "validee" && ["achat","activite"].includes(r.type))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
+      return <QueueView role="C1" allRequests={requests} label="Agent administratif" requests={requests.filter(r => ["validee","commandee","partiellement_traitee"].includes(r.status) && ["achat","activite"].includes(r.type))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
     }
     if (view === "queue_C2") {
-      return <QueueView role="C2" allRequests={requests} label="Magasinier" requests={requests.filter(r => (["validee","commandee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition"))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C2")} />;
+      return <QueueView role="C2" allRequests={requests} label="Magasinier" requests={requests.filter(r => (["validee","commandee","partiellement_traitee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition"))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C2")} />;
     }
     if (view === "queue_C3") {
       return <QueueView role="C3" allRequests={requests} label="Concierge" requests={requests.filter(r => r.status === "validee_C3" && r.type === "requisition")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C3")} />;
@@ -4917,7 +4935,7 @@ export default function App() {
             { key: "history", label: "📋 Historique" },
             ...(user.roles.includes("A") ? [{ key: "queue_A", label: "👍 Approbateur" }] : []),
             ...(user.roles.includes("B") ? [{ key: "queue_B", label: "✅ Vérificateur" }] : []),
-            ...(user.roles.includes("C1") ? [{ key: "queue_C1", label: "📝 Secrétaire" }] : []),
+            ...(user.roles.includes("C1") ? [{ key: "queue_C1", label: "📝 Agent administratif" }] : []),
             ...(user.roles.includes("C2") ? [{ key: "queue_C2", label: "📦 Magasinier" }] : []),
             ...(user.roles.includes("C3") ? [{ key: "queue_C3", label: "🔧 Concierge" }] : []),
             ...(user.roles.includes("D") ? [{ key: "admin", label: "⚙️ Admin" }] : []),
