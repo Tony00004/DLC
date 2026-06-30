@@ -272,7 +272,7 @@ function LoginScreen({ onLogin }) {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView }) {
+function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {} }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(null);
   const myRequests = requests.filter((r) => r.authorId === user.id);
@@ -516,7 +516,12 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
                     <td style={S.td}><span style={{ fontSize: 12 }}>{REQUEST_TYPES[r.type]}</span></td>
                     <td style={S.td}><strong>{r.title}</strong></td>
                     <td style={S.td}>{r.date}</td>
-                    <td style={S.td}><span style={S.badge(st.color)}>{st.label}</span></td>
+                    <td style={S.td}>
+                      <span style={{ ...S.badge(st.color), cursor: statusDefinitions[r.status] ? "help" : "default" }}
+                        title={statusDefinitions[r.status] || ""}>
+                        {st.label}
+                      </span>
+                    </td>
                     <td style={S.td}>
                       <button style={{ ...S.btn, padding: "4px 12px", fontSize: 12 }} onClick={() => { setSelectedRequest(r); setView("detail"); }}>
                         Voir
@@ -1265,7 +1270,7 @@ function QueueView({ role, label, requests, allRequests, user, onAction, onBack,
 }
 
 // ─── Admin View (role D) ──────────────────────────────────────────────────────
-function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms }) {
+function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [newServiceType, setNewServiceType] = useState("");
@@ -1289,6 +1294,7 @@ function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServ
 
   const TABS = [
     { id: "droits",      label: "Gestion des droits",          icon: "👥" },
+    { id: "statuts",     label: "Définitions des statuts",     icon: "🏷️" },
     { id: "achat",       label: "Formulaire — Achat matériel", icon: "🛒" },
     { id: "activite",    label: "Formulaire — Activités/Sorties", icon: "🎒" },
     { id: "requisition", label: "Formulaire — Réquisition interne", icon: "🔧" },
@@ -1470,6 +1476,37 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
             </div>
             <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 8 }}>
               ℹ️ Les ajouts et retraits sont temporaires jusqu'à ce que vous cliquiez sur « Enregistrer les modifications ».
+            </p>
+          </div>
+        )}
+
+        {/* ── Onglet : Définitions des statuts ── */}
+        {activeTab === "statuts" && (
+          <div>
+            {sectionTitle("Définitions des statuts", "Ces textes s'affichent en bulle d'aide lorsque l'utilisateur survole un statut dans « Mes demandes récentes ».")}
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                { key: "soumise",   label: "Soumise",        color: "#64748b" },
+                { key: "acceptee",  label: "Approuvée",      color: "#0284c7" },
+                { key: "validee",   label: "Vérifiée",       color: "#7c3aed" },
+                { key: "commandee", label: "En commande",    color: "#ea580c" },
+                { key: "traitee",   label: "Traitée",        color: "#008c4a" },
+                { key: "refusee",   label: "Refusée",        color: "#b42318" },
+                { key: "annulee",   label: "Annulée",        color: "#78350f" },
+              ].map(({ key, label, color }) => (
+                <div key={key} style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, alignItems: "center", padding: "12px 16px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                  <span style={{ ...S.badge(color), fontSize: 13, textAlign: "center" }}>{label}</span>
+                  <input
+                    style={S.input}
+                    value={statusDefinitions[key] || ""}
+                    onChange={e => onUpdateStatusDefinitions(prev => ({ ...prev, [key]: e.target.value }))}
+                    placeholder={`Définition du statut « ${label} »…`}
+                  />
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 14 }}>
+              ℹ️ Les modifications sont appliquées immédiatement pour tous les utilisateurs.
             </p>
           </div>
         )}
@@ -2567,7 +2604,10 @@ function DrawingZone({ onChange, initialShapes = [] }) {
     const r  = el.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return {x:Math.round(cx-r.left), y:Math.round(cy-r.top)};
+    // Convertir les pixels rendus en coordonnées viewBox (0-760 × 0-440)
+    const scaleX = 760 / r.width;
+    const scaleY = 440 / r.height;
+    return {x: Math.round((cx - r.left) * scaleX), y: Math.round((cy - r.top) * scaleY)};
   }
 
   // ── Clic SVG ─────────────────────────────────────────────────────────────
@@ -2853,7 +2893,7 @@ function DrawingZone({ onChange, initialShapes = [] }) {
 
       {/* Canvas SVG */}
       <div style={{position:"relative"}}>
-        <svg id="draw-svg" width="100%" height="440"
+        <svg id="draw-svg" width="100%" viewBox="0 0 760 440"
           style={{display:"block",border:"2px solid #d1d5db",borderRadius:"0 0 8px 8px",background:"#fff",
             cursor:drag||resize?"grabbing":tool==="text"?"text":tool==="select"?"default":"crosshair",
             userSelect:"none",touchAction:"none"}}
@@ -3967,6 +4007,15 @@ export default function App() {
   const [prevView, setPrevView] = useState("dashboard");
   const [serviceTypes, setServiceTypes] = useState(["Déplacement de mobilier", "Autres (précisez)"]);
   const [activeForms, setActiveForms] = useState({ achat: true, activite: true, requisition: true });
+  const [statusDefinitions, setStatusDefinitions] = useState({
+    soumise:   "Demande envoyée à la direction répondante",
+    acceptee:  "Demande acceptée par votre direction répondante et envoyée à la gestionnaire administrative",
+    validee:   "Demande acceptée par la gestionnaire administrative et en attente d'être traitée par l'agent administratif",
+    traitee:   "Demande terminée",
+    commandee: "Articles commandés — en attente de réception",
+    refusee:   "Demande refusée par la direction ou la gestionnaire administrative",
+    annulee:   "Demande annulée par le demandeur ou la demandeuse",
+  });
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [editContext, setEditContext] = useState(null); // { request, nextStatus, comment }
   const [requests, setRequests] = useState([
@@ -4435,7 +4484,7 @@ export default function App() {
 
   function renderView() {
     if (view === "dashboard") {
-      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} />;
+      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} />;
     }
     if (view === "form_achat") {
       return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} />;
@@ -4509,9 +4558,9 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} activeForms={activeForms} onUpdateActiveForms={setActiveForms} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={setServiceTypes} activeForms={activeForms} onUpdateActiveForms={setActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={setStatusDefinitions} />;
     }
-    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} />;
+    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} />;
   }
 
   return (
