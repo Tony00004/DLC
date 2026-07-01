@@ -42,6 +42,15 @@ const REQUEST_TYPES = {
 const MATIERES = ["Accueil","Adaptation scolaire","Anglais","Arts","Culture et citoyenneté québécoise (CCQ)","Éducation physique","Français","Mathématiques","Science","Univers social / Histoire","Non applicable","Autre"];
 const NIVEAUX  = ["Accueil","Année transitoire (AT)","EMS","Pré-DÉP","S1","S2","S3","S4","S5","Soutien à l'apprentissage (SA)","Soutien à l'autonomie et la socialisation (SAS)","Autre","Non applicable"];
 
+const CUSTOM_EVENT_COLORS = {
+  mauve:      { label: "Mauve",      bg: "#ede9fe", border: "#7c3aed", dot: "#7c3aed" },
+  bleu_fonce: { label: "Bleu foncé", bg: "#dbeafe", border: "#1e40af", dot: "#1e40af" },
+  rose:       { label: "Rose",       bg: "#fce7f3", border: "#db2777", dot: "#db2777" },
+  orange:     { label: "Orange",     bg: "#ffedd5", border: "#ea580c", dot: "#ea580c" },
+  turquoise:  { label: "Turquoise",  bg: "#ccfbf1", border: "#0d9488", dot: "#0d9488" },
+  gris:       { label: "Gris",       bg: "#f3f4f6", border: "#6b7280", dot: "#6b7280" },
+};
+
 // Retourne l'utilisateur approbateur correspondant aux règles, ou null si aucune règle ne s'applique.
 function resolveApprobateur(matiere, niveau, rules, users) {
   if (!rules || rules.length === 0) return null;
@@ -281,9 +290,13 @@ function LoginScreen({ onLogin }) {
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
-function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {} }) {
+function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(null);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "mauve" });
+  const [savingEvent, setSavingEvent] = useState(false);
+  const canManageCalendar = user.roles.includes("C1") || user.roles.includes("D");
   const myRequests = requests.filter((r) => r.authorId === user.id);
   const pendingA  = requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
@@ -339,23 +352,22 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
         </div>
 
         <div style={{ ...S.card, marginBottom: 0, padding: "18px 20px" }}>
-          <h3 style={{ ...S.sectionTitle, fontSize: 15, marginBottom: 10, paddingBottom: 6 }}>Calendrier</h3>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <h3 style={{ ...S.sectionTitle, fontSize: 15, margin: 0, paddingBottom: 6 }}>Calendrier</h3>
+            {canManageCalendar && (
+              <button style={{ ...S.btn, fontSize: 11, padding: "4px 10px" }} onClick={() => { setNewEvent({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "mauve" }); setShowAddEvent(true); }}>
+                + Ajouter un événement
+              </button>
+            )}
+          </div>
           {(() => {
             const now = new Date();
             const todayIso = now.toISOString().slice(0, 10);
-
-            const sortieDates = new Set();
-            requests.forEach((r) => {
-              if (r.type === "activite" && r.formData?.typeActivite?.includes("Sortie") && Array.isArray(r.formData?.datesPrevues)) {
-                r.formData.datesPrevues.forEach((d) => { if (d.date) sortieDates.add(d.date); });
-              }
-            });
-
-            const MOIS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
-            const jours = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+            const MOIS = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+            const jours = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 
             const first = new Date(calMonth.getFullYear(), calMonth.getMonth(), 1);
-            const startOffset = (first.getDay() + 6) % 7; // lundi = 0
+            const startOffset = (first.getDay() + 6) % 7;
             const gridStart = new Date(first);
             gridStart.setDate(first.getDate() - startOffset);
 
@@ -365,10 +377,20 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
               d.setDate(gridStart.getDate() + i);
               const iso = d.toISOString().slice(0, 10);
               const inMonth = d.getMonth() === calMonth.getMonth();
-              const dowIdx = (d.getDay() + 6) % 7; // lundi = 0 … dimanche = 6
-              cells.push({ iso, day: d.getDate(), inMonth, isWeekend: dowIdx >= 5, isToday: iso === todayIso, hasSortie: sortieDates.has(iso) });
+              const dowIdx = (d.getDay() + 6) % 7;
+              const dayActivites = requests.filter(r =>
+                r.type === "activite" &&
+                !["refusee","annulee"].includes(r.status) &&
+                Array.isArray(r.formData?.datesPrevues) &&
+                r.formData.datesPrevues.some(dp => dp.date === iso)
+              );
+              const dayCustom = calendarEvents.filter(e => e.date === iso);
+              const hasNonFinal = dayActivites.some(r => r.status !== "traitee");
+              const hasFinal    = dayActivites.some(r => r.status === "traitee");
+              const hasAny = dayActivites.length > 0 || dayCustom.length > 0;
+              cells.push({ iso, day: d.getDate(), inMonth, isWeekend: dowIdx >= 5, isToday: iso === todayIso, dayActivites, dayCustom, hasNonFinal, hasFinal, hasAny });
             }
-            while (cells.length > 35 && cells.slice(-7).every((c) => !c.inMonth)) cells.splice(-7, 7);
+            while (cells.length > 35 && cells.slice(-7).every(c => !c.inMonth)) cells.splice(-7, 7);
 
             const isCurrentMonth = calMonth.getMonth() === now.getMonth() && calMonth.getFullYear() === now.getFullYear();
 
@@ -384,31 +406,54 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
                   </div>
                   <button style={{ ...S.btn, padding: "3px 8px", fontSize: 12 }} onClick={() => setCalMonth(new Date(calMonth.getFullYear(), calMonth.getMonth() + 1, 1))}>›</button>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
-                  {jours.map((j) => (
-                    <div key={j} style={{ textAlign: "center", fontSize: 9.5, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase" }}>{j}</div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 3 }}>
+                  {jours.map(j => (
+                    <div key={j} style={{ textAlign: "center", fontSize: 9.5, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase", paddingBottom: 2 }}>{j}</div>
                   ))}
-                  {cells.map((c) => (
-                    <div key={c.iso}
-                      onClick={() => { if (c.hasSortie && c.inMonth) setSelectedDate(c.iso); }}
-                      style={{
-                        borderRadius: 5,
-                        padding: "4px 2px",
-                        textAlign: "center",
-                        minHeight: 26,
-                        border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
-                        background: !c.inMonth ? "#f6f7f9" : c.hasSortie ? "#d1f5e0" : c.isWeekend ? "#e5e7eb" : "#fff",
-                        opacity: c.inMonth ? 1 : 0.45,
-                        cursor: c.hasSortie && c.inMonth ? "pointer" : "default",
-                      }}>
-                      <div style={{ fontSize: 11, fontWeight: 800, color: c.hasSortie && c.inMonth ? COLORS.vertFonce : COLORS.noir }}>{c.day}</div>
-                      {c.hasSortie && c.inMonth && <div style={{ fontSize: 7, marginTop: 1, color: COLORS.vertFonce, fontWeight: 700 }}>Sortie</div>}
-                    </div>
-                  ))}
+                  {cells.map(c => {
+                    const bg = !c.inMonth ? "#f6f7f9"
+                      : c.hasNonFinal  ? "#fef9c3"
+                      : c.hasFinal     ? "#dcfce7"
+                      : c.isWeekend    ? "#f3f4f6"
+                      : "#fff";
+                    const textColor = !c.inMonth ? "#aaa"
+                      : c.hasNonFinal ? "#92400e"
+                      : c.hasFinal    ? COLORS.vertFonce
+                      : COLORS.noir;
+                    return (
+                      <div key={c.iso}
+                        onClick={() => { if (c.hasAny && c.inMonth) setSelectedDate(c.iso); }}
+                        style={{
+                          borderRadius: 5, padding: "3px 2px", textAlign: "center", minHeight: 30,
+                          border: c.isToday ? `2px solid ${COLORS.bleu}` : "1px solid #e5e7eb",
+                          background: bg, opacity: c.inMonth ? 1 : 0.45,
+                          cursor: c.hasAny && c.inMonth ? "pointer" : "default",
+                        }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: textColor }}>{c.day}</div>
+                        {c.inMonth && c.dayActivites.length > 0 && (
+                          <div style={{ fontSize: 7, marginTop: 1, color: textColor, fontWeight: 700, lineHeight: 1 }}>
+                            {c.hasNonFinal ? "En cours" : "Complétée"}
+                          </div>
+                        )}
+                        {c.inMonth && c.dayCustom.length > 0 && (
+                          <div style={{ display: "flex", justifyContent: "center", gap: 2, marginTop: 2, flexWrap: "wrap" }}>
+                            {c.dayCustom.slice(0, 3).map(ev => (
+                              <div key={ev.id} style={{ width: 5, height: 5, borderRadius: "50%", background: CUSTOM_EVENT_COLORS[ev.couleur]?.dot || "#6b7280" }} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div style={{ display: "flex", gap: 14, marginTop: 10, fontSize: 10.5, color: COLORS.gris }}>
-                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#d1f5e0", borderRadius: 2, marginRight: 5 }}></span>Demande de sortie</span>
-                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#e5e7eb", borderRadius: 2, marginRight: 5 }}></span>Fin de semaine</span>
+
+                {/* Légende */}
+                <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 10, color: COLORS.gris, flexWrap: "wrap" }}>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#fef9c3", border: "1px solid #d97706", borderRadius: 2, marginRight: 4 }} />Activité en cours</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#dcfce7", border: "1px solid #008c4a", borderRadius: 2, marginRight: 4 }} />Activité complétée</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 2, marginRight: 4 }} />Fin de semaine</span>
+                  <span><span style={{ display: "inline-block", width: 7, height: 7, background: "#7c3aed", borderRadius: "50%", marginRight: 4 }} />Événement</span>
                 </div>
               </>
             );
@@ -416,44 +461,147 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
         </div>
       </div>
 
-      {/* Détail des sorties pour une date du calendrier */}
+      {/* ── Popup détail d'une journée ── */}
       {selectedDate && (() => {
-        const sortiesDuJour = requests.filter(r =>
+        const activitesDuJour = requests.filter(r =>
           r.type === "activite" &&
-          r.formData?.typeActivite?.includes("Sortie") &&
+          !["refusee","annulee"].includes(r.status) &&
           Array.isArray(r.formData?.datesPrevues) &&
           r.formData.datesPrevues.some(d => d.date === selectedDate)
         );
+        const eventsDuJour = calendarEvents.filter(e => e.date === selectedDate);
         const dateLabel = new Date(selectedDate + "T00:00:00").toLocaleDateString("fr-CA", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedDate(null)}>
-            <div style={{ ...S.card, maxWidth: 560, width: "90%", maxHeight: "80vh", overflowY: "auto", marginBottom: 0 }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, textTransform: "capitalize" }}>Sorties du {dateLabel}</h3>
+            <div style={{ ...S.card, maxWidth: 580, width: "90%", maxHeight: "80vh", overflowY: "auto", marginBottom: 0 }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, textTransform: "capitalize", fontSize: 15 }}>
+                  Événements du {dateLabel}
+                </h3>
                 <button style={{ ...S.btn, padding: "4px 10px" }} onClick={() => setSelectedDate(null)}>✕</button>
               </div>
-              {sortiesDuJour.length === 0 ? (
-                <p style={{ color: COLORS.gris, fontSize: 14 }}>Aucune sortie prévue à cette date.</p>
-              ) : (
-                sortiesDuJour.map((r) => {
-                  const fd = r.formData || {};
-                  const dInfo = fd.datesPrevues.find(d => d.date === selectedDate);
-                  return (
-                    <div key={r.id} style={{ padding: "12px 14px", marginBottom: 10, background: "#f6f7f9", border: "1px solid #e5e7eb", borderRadius: 8 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.bleu, marginBottom: 6 }}>{fd.nomActivite || fd["Nom de l'activité"] || r.title}</div>
-                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Date et heure :</strong> {dInfo?.date}{dInfo?.heureDebut && dInfo?.heureFin ? ` de ${dInfo.heureDebut} à ${dInfo.heureFin}` : ""}</div>
-                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Matières concernées :</strong> {(fd.matieresConcernees || []).join(", ") || "—"}</div>
-                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Niveaux concernés :</strong> {(fd.niveauxConcernes || []).join(", ") || "—"}</div>
-                      <div style={{ fontSize: 13, marginBottom: 3 }}><strong>Dans le cadre d'une passion :</strong> {fd.passion || "Non"}</div>
-                      <div style={{ fontSize: 13 }}><strong>Groupes concernés :</strong> {fd.groupes || fd["Groupes"] || "—"}</div>
-                    </div>
-                  );
-                })
+
+              {/* Activités et sorties */}
+              {activitesDuJour.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Activités et sorties</div>
+                  {activitesDuJour.map(r => {
+                    const fd = r.formData || {};
+                    const dInfo = fd.datesPrevues?.find(d => d.date === selectedDate);
+                    const isCompleted = r.status === "traitee";
+                    return (
+                      <div key={r.id} style={{ padding: "10px 14px", marginBottom: 8, background: isCompleted ? "#f0fdf4" : "#fefce8", border: `1px solid ${isCompleted ? "#86efac" : "#fde68a"}`, borderRadius: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.bleu }}>{fd.nomActivite || fd["Nom de l'activité"] || r.title}</span>
+                          <span style={{ ...S.badge(STATUSES[r.status]?.color || COLORS.gris) }}>{STATUSES[r.status]?.label}</span>
+                        </div>
+                        {dInfo && <div style={{ fontSize: 12, color: COLORS.gris }}>{dInfo.heureDebut && dInfo.heureFin ? `${dInfo.heureDebut} – ${dInfo.heureFin}` : ""}</div>}
+                        <div style={{ fontSize: 12, marginTop: 3 }}><strong>Niveaux :</strong> {(fd.niveauxConcernes || []).join(", ") || "—"} &nbsp;·&nbsp; <strong>Groupes :</strong> {fd.groupes || "—"}</div>
+                        {fd.matieresConcernees?.length > 0 && <div style={{ fontSize: 12 }}><strong>Matières :</strong> {fd.matieresConcernees.join(", ")}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Événements personnalisés */}
+              {eventsDuJour.length > 0 && (
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Événements</div>
+                  {eventsDuJour.map(ev => {
+                    const col = CUSTOM_EVENT_COLORS[ev.couleur] || CUSTOM_EVENT_COLORS.gris;
+                    return (
+                      <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 8, background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8 }}>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{ev.title}</div>
+                          {(ev.heureDebut || ev.heureFin) && (
+                            <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>{ev.heureDebut}{ev.heureFin ? ` – ${ev.heureFin}` : ""}</div>
+                          )}
+                        </div>
+                        {canManageCalendar && (
+                          <button style={{ ...S.btnDanger, padding: "3px 8px", fontSize: 12, marginLeft: 12, flexShrink: 0 }}
+                            onClick={async () => {
+                              const updated = calendarEvents.filter(e => e.id !== ev.id);
+                              await onSaveCalendarEvents(updated);
+                            }}>
+                            Supprimer
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {activitesDuJour.length === 0 && eventsDuJour.length === 0 && (
+                <p style={{ color: COLORS.gris, fontSize: 14 }}>Aucun événement à cette date.</p>
               )}
             </div>
           </div>
         );
       })()}
+
+      {/* ── Modal ajout d'événement ── */}
+      {showAddEvent && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowAddEvent(false)}>
+          <div style={{ ...S.card, maxWidth: 460, width: "90%", marginBottom: 0 }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, fontSize: 15 }}>Nouvel événement</h3>
+              <button style={{ ...S.btn, padding: "4px 10px" }} onClick={() => setShowAddEvent(false)}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={S.label}>Titre de l'événement <span style={{ color: COLORS.rouge }}>*</span></label>
+              <input style={S.input} value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} placeholder="Ex : Réunion pédagogique" />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={S.label}>Date <span style={{ color: COLORS.rouge }}>*</span></label>
+              <input type="date" style={S.input} value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
+            </div>
+            <div style={{ ...S.grid2, marginBottom: 12 }}>
+              <div>
+                <label style={S.label}>Heure de début</label>
+                <input type="time" style={S.input} value={newEvent.heureDebut} onChange={e => setNewEvent(p => ({ ...p, heureDebut: e.target.value }))} />
+              </div>
+              <div>
+                <label style={S.label}>Heure de fin</label>
+                <input type="time" style={S.input} value={newEvent.heureFin} onChange={e => setNewEvent(p => ({ ...p, heureFin: e.target.value }))} />
+              </div>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={S.label}>Couleur</label>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {Object.entries(CUSTOM_EVENT_COLORS).map(([key, col]) => (
+                  <button key={key} title={col.label}
+                    onClick={() => setNewEvent(p => ({ ...p, couleur: key }))}
+                    style={{ width: 32, height: 32, borderRadius: "50%", background: col.dot, border: newEvent.couleur === key ? `3px solid #1e293b` : `2px solid ${col.dot}`, cursor: "pointer", flexShrink: 0 }} />
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 6 }}>
+                Sélectionné : <strong>{CUSTOM_EVENT_COLORS[newEvent.couleur]?.label}</strong>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button style={{ ...S.btnPrimary, opacity: savingEvent ? 0.7 : 1, cursor: savingEvent ? "not-allowed" : "pointer" }}
+                disabled={savingEvent}
+                onClick={async () => {
+                  if (!newEvent.title.trim() || !newEvent.date) { alert("Le titre et la date sont obligatoires."); return; }
+                  setSavingEvent(true);
+                  try {
+                    const ev = { id: Date.now(), ...newEvent, title: newEvent.title.trim() };
+                    await onSaveCalendarEvents([...calendarEvents, ev]);
+                    setShowAddEvent(false);
+                  } finally { setSavingEvent(false); }
+                }}>
+                {savingEvent ? "Sauvegarde…" : "Ajouter l'événement"}
+              </button>
+              <button style={S.btn} onClick={() => setShowAddEvent(false)}>Annuler</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Role actions — toujours visible si au moins 1 rôle exécutant */}
       {(user.roles.some(r => ["A","B","C1","C2","C3","D"].includes(r))) && (
