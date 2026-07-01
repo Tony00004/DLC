@@ -349,7 +349,7 @@ function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, s
 
         <div style={{ ...S.card, marginBottom: 0, padding: "18px 20px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <h3 style={{ ...S.sectionTitle, fontSize: 15, margin: 0, paddingBottom: 6 }}>Calendrier</h3>
+            <h3 style={{ ...S.sectionTitle, margin: 0, paddingBottom: 6 }}>Calendrier</h3>
             {canManageCalendar && (
               <button style={{ ...S.btn, fontSize: 11, padding: "4px 10px" }} onClick={() => { setNewEvent({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "mauve" }); setShowAddEvent(true); }}>
                 + Ajouter un événement
@@ -4950,7 +4950,7 @@ export default function App() {
       <Topbar user={user} onLogout={handleLogout} setView={setView} requests={requests} />
       {/* Nav tabs */}
       <div style={{ background: "#fff", borderBottom: "2px solid #e5e7eb" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", display: "flex", gap: 0 }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 24px", display: "flex", flexWrap: "wrap", gap: 0 }}>
           {[
             { key: "dashboard", label: "📊 Tableau de bord" },
             { key: "history", label: "📋 Historique" },
