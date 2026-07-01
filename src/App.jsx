@@ -1855,7 +1855,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                 <label style={{ ...S.label, margin: 0, minWidth: 280, fontWeight: 600 }}>Coût d'une libération par période ($)</label>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="number" step="0.01" min="0" style={{ ...S.input, width: 120 }} defaultValue={COUT_LIBERATION_DEFAULT} id="cout-liberation-input" />
+                  <input type="text" inputMode="decimal" style={{ ...S.input, width: 120 }} defaultValue={COUT_LIBERATION_DEFAULT} id="cout-liberation-input" />
                   <button type="button" style={S.btnPrimary} onClick={() => {
                     const val = document.getElementById("cout-liberation-input").value;
                     if (val && !isNaN(parseFloat(val))) { COUT_LIBERATION_DEFAULT = val; alert("Coût de libération mis à jour : " + val + " $"); }
@@ -2373,7 +2373,7 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
                 <tr key={row.id} style={{ background: idx % 2 === 0 ? "#fff" : "#f5faf7" }}>
                   <td style={{ ...S.td, textAlign: "center", fontWeight: 700 }}>{idx + 1}</td>
                   <td style={S.td}>
-                    <input type="number" min="0" step="1" style={{ ...S.input, padding: "4px 6px", fontSize: 12, width: 60 }} value={row.qty} onChange={e => changerRow(idx, "qty", e.target.value)} />
+                    <input type="text" inputMode="numeric" style={{ ...S.input, padding: "4px 6px", fontSize: 12, width: 60 }} value={row.qty} onChange={e => changerRow(idx, "qty", e.target.value)} />
                   </td>
                   <td style={S.td}>
                     <input style={{ ...S.input, padding: "4px 6px", fontSize: 12, minWidth: 100 }} value={row.nom} onChange={e => changerRow(idx, "nom", e.target.value)} />
@@ -2389,7 +2389,7 @@ function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, on
                   </td>
                   <td style={S.td}>
                     <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                      <input type="number" min="0" step="0.01" style={{ ...S.input, padding: "4px 6px", fontSize: 12, width: 80 }} value={row.prixUnitaire} onChange={e => changerRow(idx, "prixUnitaire", e.target.value)} />
+                      <input type="text" inputMode="decimal" style={{ ...S.input, padding: "4px 6px", fontSize: 12, width: 80 }} value={row.prixUnitaire} onChange={e => changerRow(idx, "prixUnitaire", e.target.value)} />
                       <span style={{ fontSize: 12, color: COLORS.gris }}>$</span>
                     </div>
                   </td>
@@ -2614,7 +2614,7 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode,
 
   const inputDollar = (val, onChange) => (
     <div style={{ display: "flex", alignItems: "center", border: "1px solid #ccc", borderRadius: 4, overflow: "hidden", background: "#fff" }}>
-      <input type="number" step="0.01" min="0" style={{ ...S.input, border: "none", flex: 1, borderRadius: 0 }} value={val} onChange={onChange} />
+      <input type="text" inputMode="decimal" style={{ ...S.input, border: "none", flex: 1, borderRadius: 0 }} value={val} onChange={onChange} />
       <span style={{ padding: "0 8px", background: "#f5f5f5", borderLeft: "1px solid #ccc", fontSize: 12, lineHeight: "36px" }}>$</span>
     </div>
   );
@@ -2962,7 +2962,7 @@ function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode,
                     </td>
                     <td style={S.td}>
                       <label style={{ fontWeight: 600, fontSize: 12, display: "block", marginBottom: 4 }}>Nombre total {row.nbLabel}<span style={{ color: COLORS.rouge }}>*</span></label>
-                      <input type="number" min="0" style={S.input} value={form[row.nb]} onChange={(e) => setForm({ ...form, [row.nb]: e.target.value })} />
+                      <input type="text" inputMode="numeric" style={S.input} value={form[row.nb]} onChange={(e) => setForm({ ...form, [row.nb]: e.target.value })} />
                     </td>
                     <td style={S.td}>
                       <label style={{ fontWeight: 600, fontSize: 12, display: "block", marginBottom: 4 }}>Sous-total</label>
@@ -3821,7 +3821,7 @@ function FormAchatEdit({ request, user, allUsers, onSave, onBack }) {
                 <tr key={row.id} style={{ background: rowBgEdit(idx) }}>
                   <td style={{ ...S.td, textAlign: "center", fontWeight: 700, background: rowBgEdit(idx) }}>{idx + 1}</td>
                   <td style={{ ...S.td, background: rowBgEdit(idx) }}>
-                    <input type="number" min="0" step="1" style={{ ...S.input, padding: "4px 6px", fontSize: 12, background: "#f0f8f4", width: 60 }} value={row.qty} onChange={(e) => updateRow(idx, "qty", e.target.value)} />
+                    <input type="text" inputMode="numeric" style={{ ...S.input, padding: "4px 6px", fontSize: 12, background: "#f0f8f4", width: 60 }} value={row.qty} onChange={(e) => updateRow(idx, "qty", e.target.value)} />
                   </td>
                   <td style={{ ...S.td, background: rowBgEdit(idx) }}>
                     <input style={{ ...S.input, padding: "4px 6px", fontSize: 12, background: "#f0f8f4", minWidth: 100 }} value={row.nom} onChange={(e) => updateRow(idx, "nom", e.target.value)} />
@@ -3837,7 +3837,7 @@ function FormAchatEdit({ request, user, allUsers, onSave, onBack }) {
                   </td>
                   <td style={{ ...S.td, background: rowBgEdit(idx) }}>
                     <div style={{ position: "relative", display: "inline-block", width: 90 }}>
-                      <input type="number" min="0" step="0.01" style={{ ...S.input, padding: "4px 22px 4px 6px", fontSize: 12, background: "#f0f8f4", width: "100%", boxSizing: "border-box" }} value={row.prixUnitaire} onChange={(e) => updateRow(idx, "prixUnitaire", e.target.value)} />
+                      <input type="text" inputMode="decimal" style={{ ...S.input, padding: "4px 22px 4px 6px", fontSize: 12, background: "#f0f8f4", width: "100%", boxSizing: "border-box" }} value={row.prixUnitaire} onChange={(e) => updateRow(idx, "prixUnitaire", e.target.value)} />
                       <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 12, color: "#666", pointerEvents: "none" }}>$</span>
                     </div>
                   </td>
@@ -4129,19 +4129,19 @@ function FormActiviteEdit({ request, user, allUsers, onSave, onBack, niveauxList
               ].map(({ label, cf, nf }) => (
                 <tr key={cf}>
                   <td style={S.td}>{label}</td>
-                  <td style={S.td}><input type="number" min="0" step="0.01" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form[cf]} onChange={(e) => setForm({ ...form, [cf]: e.target.value })} /></td>
-                  <td style={S.td}><input type="number" min="0" step="1" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form[nf]} onChange={(e) => setForm({ ...form, [nf]: e.target.value })} /></td>
+                  <td style={S.td}><input type="text" inputMode="decimal" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form[cf]} onChange={(e) => setForm({ ...form, [cf]: e.target.value })} /></td>
+                  <td style={S.td}><input type="text" inputMode="numeric" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form[nf]} onChange={(e) => setForm({ ...form, [nf]: e.target.value })} /></td>
                   <td style={{ ...S.td, textAlign: "right", fontWeight: 600 }}>{(parseFloat(form[cf] || 0) * parseFloat(form[nf] || 0)).toFixed(2)} $</td>
                 </tr>
               ))}
               <tr>
                 <td style={S.td}>Transport</td>
-                <td colSpan={2} style={S.td}><input type="number" min="0" step="0.01" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form.coutTransport} onChange={(e) => setForm({ ...form, coutTransport: e.target.value })} /></td>
+                <td colSpan={2} style={S.td}><input type="text" inputMode="decimal" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form.coutTransport} onChange={(e) => setForm({ ...form, coutTransport: e.target.value })} /></td>
                 <td style={{ ...S.td, textAlign: "right", fontWeight: 600 }}>{parseFloat(form.coutTransport || 0).toFixed(2)} $</td>
               </tr>
               <tr>
                 <td style={S.td}>Autre montant</td>
-                <td colSpan={2} style={S.td}><input type="number" min="0" step="0.01" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form.autreMontant} onChange={(e) => setForm({ ...form, autreMontant: e.target.value })} /></td>
+                <td colSpan={2} style={S.td}><input type="text" inputMode="decimal" style={{ ...S.input, padding: "3px 6px", fontSize: 12 }} value={form.autreMontant} onChange={(e) => setForm({ ...form, autreMontant: e.target.value })} /></td>
                 <td style={{ ...S.td, textAlign: "right", fontWeight: 600 }}>{parseFloat(form.autreMontant || 0).toFixed(2)} $</td>
               </tr>
             </tbody>
