@@ -1,9 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import * as api from "./api";
-// ═══════════════════════════════════════════════════
-// FICHIER CORRIGÉ — Version finale — Date.now() retiré
-// Si vous voyez cette ligne dans votre App.jsx, c'est le bon fichier
-// ═══════════════════════════════════════════════════
 
 // ─── Color palette (from HTML files) ────────────────────────────────────────
 const COLORS = {
@@ -4588,6 +4584,7 @@ export default function App() {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [calendarEvents, setCalendarEvents] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -4605,6 +4602,7 @@ export default function App() {
         if (settingsData.niveauxList)         setNiveauxList(settingsData.niveauxList);
         if (settingsData.matieresList)        setMatieresList(settingsData.matieresList);
         if (settingsData.serviceTypes)        setServiceTypes(settingsData.serviceTypes);
+        if (settingsData.calendarEvents)      setCalendarEvents(settingsData.calendarEvents);
         setLoadError("");
       } catch (err) {
         setLoadError("Impossible de joindre le serveur DLC API (http://localhost:3001). Vérifiez qu'il est démarré, puis rechargez la page. Détail : " + err.message);
@@ -4613,6 +4611,15 @@ export default function App() {
       }
     })();
   }, []);
+
+  async function handleSaveCalendarEvents(events) {
+    try {
+      await api.updateSetting("calendarEvents", events);
+      setCalendarEvents(events);
+    } catch (err) {
+      alert("Erreur lors de la sauvegarde des événements du calendrier : " + err.message);
+    }
+  }
 
   async function handleLogin(email, password) {
     const u = await api.login(email, password);
@@ -4851,7 +4858,7 @@ export default function App() {
 
   function renderView() {
     if (view === "dashboard") {
-      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} />;
+      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} />;
     }
     if (view === "form_achat") {
       return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} />;
@@ -4935,7 +4942,7 @@ export default function App() {
     if (view === "admin" && user.roles.includes("D")) {
       return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} />;
     }
-    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} />;
+    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} />;
   }
 
   return (
