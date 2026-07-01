@@ -958,8 +958,11 @@ function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUp
 
         {/* ── Autorisations CPE / CÉ (activité seulement) ── */}
         {request.type === "activite" && (() => {
-          const canEditAuth = !isTerminated && (canSecretary || isAdmin);
-          const hasAuthData = cpeLocal.decision || ceLocal.decision;
+          const isAtAgentStage = ["validee", "commandee", "partiellement_traitee"].includes(request.status);
+          const canEditAuth    = isAtAgentStage && (canSecretary || isAdmin);
+          const hasAuthData    = cpeLocal.decision || ceLocal.decision;
+          // Visible uniquement au stade agent administratif (ou après, si des données ont été sauvegardées)
+          if (!isAtAgentStage && !hasAuthData) return null;
           if (!canEditAuth && !hasAuthData) return null;
           const renderAuthCard = (label, val, setVal) => {
             const isAuto = val.decision === "autorisee";
