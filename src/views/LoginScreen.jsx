@@ -47,7 +47,7 @@ export function LoginScreen({ onLogin }) {
                   type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="prenom.nom"
+                  placeholder="identifiant"
                   required
                 />
                 <span style={{ padding: "0 10px", background: "#f3f4f6", color: COLORS.gris, fontSize: 12, whiteSpace: "nowrap", borderLeft: "1px solid #bfc7d1", lineHeight: "38px" }}>

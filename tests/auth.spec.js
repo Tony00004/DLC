@@ -21,7 +21,7 @@ test.describe("Login form", () => {
   test("shows the login screen on first load", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Connexion" })).toBeVisible();
     await expect(page.getByText("Accès réservé au personnel de l'école")).toBeVisible();
-    await expect(page.getByPlaceholder("prenom.nom")).toBeVisible();
+    await expect(page.getByPlaceholder("identifiant")).toBeVisible();
     await expect(page.getByPlaceholder("••••••••")).toBeVisible();
     await expect(page.getByRole("button", { name: "Connexion" })).toBeVisible();
   });
@@ -43,7 +43,7 @@ test.describe("Invalid credentials", () => {
   });
 
   test("rejects a completely wrong username and password", async ({ page }) => {
-    await page.getByPlaceholder("prenom.nom").fill("nobody");
+    await page.getByPlaceholder("identifiant").fill("nobody");
     await page.getByPlaceholder("••••••••").fill("wrongpassword");
     await page.getByRole("button", { name: "Connexion" }).click();
 
@@ -53,7 +53,7 @@ test.describe("Invalid credentials", () => {
   });
 
   test("rejects a valid username with the wrong password", async ({ page }) => {
-    await page.getByPlaceholder("prenom.nom").fill(USERS.utilisateur.username);
+    await page.getByPlaceholder("identifiant").fill(USERS.utilisateur.username);
     await page.getByPlaceholder("••••••••").fill("badpassword");
     await page.getByRole("button", { name: "Connexion" }).click();
 
@@ -69,7 +69,7 @@ test.describe("Invalid credentials", () => {
   });
 
   test("rejects empty password with valid username", async ({ page }) => {
-    await page.getByPlaceholder("prenom.nom").fill(USERS.utilisateur.username);
+    await page.getByPlaceholder("identifiant").fill(USERS.utilisateur.username);
     await page.getByRole("button", { name: "Connexion" }).click();
 
     await expect(page.getByRole("button", { name: "Connexion" })).toBeVisible();
@@ -77,13 +77,13 @@ test.describe("Invalid credentials", () => {
 
   test("does not leak user existence — same error for wrong user vs wrong password", async ({ page }) => {
     // Wrong user
-    await page.getByPlaceholder("prenom.nom").fill("doesnotexist");
+    await page.getByPlaceholder("identifiant").fill("doesnotexist");
     await page.getByPlaceholder("••••••••").fill("1234");
     await page.getByRole("button", { name: "Connexion" }).click();
     const msgUnknownUser = await page.getByText(/identifiants incorrects/i).textContent();
 
     // Valid user, wrong password
-    await page.getByPlaceholder("prenom.nom").fill(USERS.utilisateur.username);
+    await page.getByPlaceholder("identifiant").fill(USERS.utilisateur.username);
     await page.getByPlaceholder("••••••••").fill("wrongpassword");
     await page.getByRole("button", { name: "Connexion" }).click();
     const msgWrongPass = await page.getByText(/identifiants incorrects/i).textContent();
@@ -107,7 +107,7 @@ test.describe("Demo account quick-fill", () => {
     await page.goto("/");
     await page.getByText("Mario Dumont").click();
 
-    await expect(page.getByPlaceholder("prenom.nom")).toHaveValue(USERS.utilisateur.username);
+    await expect(page.getByPlaceholder("identifiant")).toHaveValue(USERS.utilisateur.username);
   });
 
   test("clicking a demo account and submitting logs in successfully", async ({ page }) => {

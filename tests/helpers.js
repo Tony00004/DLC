@@ -21,7 +21,7 @@ export const USERS = {
  */
 export async function loginAs(page, user) {
   await page.goto("/");
-  await page.getByPlaceholder("prenom.nom").fill(user.username);
+  await page.getByPlaceholder("identifiant").fill(user.username);
   await page.getByPlaceholder("••••••••").fill(user.password);
   await page.getByRole("button", { name: "Connexion" }).click();
   // Wait until the dashboard is visible

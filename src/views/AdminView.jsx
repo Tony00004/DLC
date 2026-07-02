@@ -112,7 +112,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
               <div>
                 <label style={S.label}>Identifiant courriel <span style={{ color: COLORS.rouge }}>*</span></label>
                 <div style={{ display: "flex", alignItems: "center", border: "1px solid #bfc7d1", borderRadius: 6, overflow: "hidden" }}>
-                  <input id="new-user-email" style={{ ...S.input, border: "none", flex: 1 }} placeholder="prenom.nom" onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                  <input id="new-user-email" style={{ ...S.input, border: "none", flex: 1 }} placeholder="identifiant" onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
                   <span style={{ padding: "0 8px", background: "#f3f4f6", fontSize: 11, color: COLORS.gris, whiteSpace: "nowrap", borderLeft: "1px solid #bfc7d1", lineHeight: "38px" }}>@csslaval.gouv.qc.ca</span>
                 </div>
               </div>
