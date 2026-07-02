@@ -162,7 +162,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
 
                 {/* Légende */}
                 <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 10, color: COLORS.gris, flexWrap: "wrap" }}>
-                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#fef9c3", border: "1px solid #d97706", borderRadius: 2, marginRight: 4 }} />Activité en cours</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#fef9c3", border: "1px solid #d97706", borderRadius: 2, marginRight: 4 }} />Activité en cours d'autorisation</span>
                   <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#dcfce7", border: "1px solid #008c4a", borderRadius: 2, marginRight: 4 }} />Activité complétée</span>
                   <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 2, marginRight: 4 }} />Fin de semaine</span>
                   <span><span style={{ display: "inline-block", width: 7, height: 7, background: "#7c3aed", borderRadius: "50%", marginRight: 4 }} />Événement</span>
