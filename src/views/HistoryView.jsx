@@ -3,8 +3,21 @@ import { COLORS, STATUSES, REQUEST_TYPES } from "../constants";
 import { S } from "../styles";
 import { getSchoolYear, getPrixTotal } from "../utils/format";
 import { exportExcel } from "../utils/excel";
+import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta, getApprovalStages, getCreationStatus, getCreationLabel } from "../utils/workflow";
 
-export function HistoryView({ user, requests, setView, setSelectedRequest, onDeleteYear }) {
+// Fusionne les statuts fixes avec les étapes configurées par l'administrateur,
+// pour peupler le filtre « Statut » de la liste des demandes.
+function buildStatusOptions(workflowConfig) {
+  const map = new Map();
+  Object.entries(STATUSES).forEach(([k, v]) => map.set(k, v.label));
+  ["achat", "activite", "requisition"].forEach((type) => {
+    map.set(getCreationStatus(type), getCreationLabel(type));
+    getApprovalStages(type, workflowConfig).forEach((s) => map.set(s.id, s.label));
+  });
+  return Array.from(map.entries());
+}
+
+export function HistoryView({ user, requests, setView, setSelectedRequest, onDeleteYear, workflowConfig }) {
   const isAdmin = user.roles.includes("D");
 
   // Mes demandes (auteur)
@@ -18,12 +31,12 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
     ? requests
     : requests.filter(function(r) {
         var actedOn = r.history && r.history.some(function(h) { return h.by === user.name; });
-        var inQueue = (user.roles.includes("A") && ["soumise"].includes(r.status) && ["achat","activite"].includes(r.type))
-          || (user.roles.includes("A2") && r.status === "acceptee" && r.type === "achat")
-          || (user.roles.includes("B") && (r.status === "acceptee" || (r.status === "acceptee2" && r.type === "achat")))
-          || (user.roles.includes("C1") && r.status === "validee" && ["achat","activite"].includes(r.type))
-          || (user.roles.includes("C2") && ["validee","commandee"].includes(r.status) && r.type === "achat")
-          || (user.roles.includes("C3") && r.status === "validee" && r.type === "requisition");
+        var inQueue = (user.roles.includes("A") && isPendingForRole(r, "A", workflowConfig))
+          || (user.roles.includes("A2") && isPendingForRole(r, "A2", workflowConfig))
+          || (user.roles.includes("B") && isPendingForRole(r, "B", workflowConfig))
+          || (user.roles.includes("C1") && isPendingC1(r, workflowConfig))
+          || (user.roles.includes("C2") && isPendingC2(r, workflowConfig))
+          || (user.roles.includes("C3") && isPendingC3(r));
         return (actedOn || inQueue) && r.authorId !== user.id;
       });
 
@@ -67,7 +80,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   }).sort(function(a, b) { return b.date.localeCompare(a.date); });
 
   // Compteurs sur toutes les demandes visibles (pas juste le filtre)
-  var nbEnCours = allVisible.filter(function(r) { return ["soumise","acceptee","acceptee2","validee"].includes(r.status); }).length;
+  var nbEnCours = allVisible.filter(function(r) { return !["traitee","refusee","annulee"].includes(r.status); }).length;
   var nbTraitees = allVisible.filter(function(r) { return r.status === "traitee"; }).length;
   var nbRefusees = allVisible.filter(function(r) { return ["refusee","annulee"].includes(r.status); }).length;
 
@@ -123,7 +136,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
             <label style={S.label}>Statut</label>
             <select style={{ ...S.select, minWidth: 150 }} value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
               <option value="all">Tous</option>
-              {Object.entries(STATUSES).map(function([k, v]) { return <option key={k} value={k}>{v.label}</option>; })}
+              {buildStatusOptions(workflowConfig).map(function([k, label]) { return <option key={k} value={k}>{label}</option>; })}
             </select>
           </div>
           <div style={{ flex: 1, minWidth: 180 }}>
@@ -144,7 +157,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
             {filtered.length} demande{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""}
             {selectedYear !== "all" ? " · " + selectedYear : " · toutes années"}
             {selectedType !== "all" ? " · " + REQUEST_TYPES[selectedType] : ""}
-            {selectedStatus !== "all" && STATUSES[selectedStatus] ? " · " + STATUSES[selectedStatus].label : ""}
+            {selectedStatus !== "all" ? " · " + (buildStatusOptions(workflowConfig).find(([k]) => k === selectedStatus)?.[1] || selectedStatus) : ""}
           </div>
           {filtered.length > 0 && (
             <button
@@ -258,7 +271,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
               </thead>
               <tbody>
                 {filtered.map((r, i) => {
-                  var st = STATUSES[r.status] || { label: r.status, color: COLORS.gris };
+                  var st = getStatusMeta(r.type, r.status, workflowConfig);
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11, whiteSpace: "nowrap", color: COLORS.gris }}>{r.requestNumber || String(r.id)}</td>

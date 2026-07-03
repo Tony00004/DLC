@@ -3,6 +3,7 @@ import * as api from "./api";
 import { COLORS, NIVEAUX, MATIERES } from "./constants";
 import { S } from "./styles";
 import { getSchoolYear } from "./utils/format";
+import { cloneDefaultWorkflowConfig, getCreationStatus, isPendingForRole, isPendingC1, isPendingC2, isPendingC3 } from "./utils/workflow";
 import { Topbar } from "./components/Topbar";
 import { DemoBanner } from "./components/DemoBanner";
 import { LoginScreen } from "./views/LoginScreen";
@@ -29,6 +30,7 @@ export default function App() {
   ]);
   const [niveauxList, setNiveauxList] = useState([...NIVEAUX]);
   const [matieresList, setMatieresList] = useState([...MATIERES]);
+  const [workflowConfig, setWorkflowConfig] = useState(cloneDefaultWorkflowConfig());
   const [statusDefinitions, setStatusDefinitions] = useState({
     soumise:   "Demande envoyée à la direction répondante",
     acceptee:  "Demande acceptée par votre direction répondante et envoyée à la gestionnaire administrative",
@@ -64,6 +66,7 @@ export default function App() {
         if (settingsData.matieresList)        setMatieresList(settingsData.matieresList);
         if (settingsData.serviceTypes)        setServiceTypes(settingsData.serviceTypes);
         if (settingsData.calendarEvents)      setCalendarEvents(settingsData.calendarEvents);
+        if (settingsData.workflowConfig)      setWorkflowConfig(settingsData.workflowConfig);
         setLoadError("");
       } catch (err) {
         setLoadError("Impossible de joindre le serveur DLC API (http://localhost:3001). Vérifiez qu'il est démarré, puis rechargez la page. Détail : " + err.message);
@@ -97,7 +100,7 @@ export default function App() {
     const today = new Date().toISOString().slice(0, 10);
     // Les demandes de réquisition interne vont directement au vérificateur (B)
     const isRequisition = type === "requisition";
-    const initialStatus = isRequisition ? "acceptee" : "soumise";
+    const initialStatus = getCreationStatus(type);
     const historyComment = isRequisition
       ? "Demande envoyée directement au vérificateur (réquisition interne)"
       : "";
@@ -129,9 +132,10 @@ export default function App() {
       annulee:    "Confirmer l'annulation de cette demande ?",
     };
 
-    if (confirmMessages[newStatus]) {
-      if (!window.confirm(confirmMessages[newStatus])) return;
-    }
+    // Statuts personnalisés ajoutés par l'administrateur dans la chaîne de traitement :
+    // pas de message dédié, on retombe sur une confirmation générique.
+    const confirmMsg = confirmMessages[newStatus] || "Confirmer cette action ?";
+    if (!window.confirm(confirmMsg)) return;
 
     try {
       const updated = await api.actionRequest(reqId, { newStatus, comment, adminComment, by: actionUser.name, updatedRows });
@@ -301,6 +305,7 @@ export default function App() {
   const updateApprobateurRules  = persistSetting("approbateurRules", setApprobateurRules);
   const updateNiveauxList       = persistSetting("niveauxList", setNiveauxList);
   const updateMatieresList      = persistSetting("matieresList", setMatieresList);
+  const updateWorkflowConfig    = persistSetting("workflowConfig", setWorkflowConfig);
 
   if (loading) {
     return (
@@ -332,7 +337,7 @@ export default function App() {
 
   function renderView() {
     if (view === "dashboard") {
-      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} />;
+      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
     }
     if (view === "form_achat") {
       return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} />;
@@ -355,6 +360,7 @@ export default function App() {
         onUpdateItems={handleUpdateItems}
         onSaveAuthorizations={handleSaveAuthorizations}
         onReactivate={handleReactivate}
+        workflowConfig={workflowConfig}
       />;
     }
     if (view === "edit_achat" && editContext) {
@@ -397,30 +403,30 @@ export default function App() {
       />;
     }
     if (view === "queue_A") {
-      return <QueueView role="A" allRequests={requests} requests={requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_A")} />;
+      return <QueueView role="A" allRequests={requests} workflowConfig={workflowConfig} requests={requests.filter(r => isPendingForRole(r, "A", workflowConfig) && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_A")} />;
     }
     if (view === "queue_A2") {
-      return <QueueView role="A2" allRequests={requests} requests={requests.filter(r => r.status === "acceptee" && r.type === "achat")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_A2")} />;
+      return <QueueView role="A2" allRequests={requests} workflowConfig={workflowConfig} requests={requests.filter(r => isPendingForRole(r, "A2", workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_A2")} />;
     }
     if (view === "queue_B") {
-      return <QueueView role="B" allRequests={requests} requests={requests.filter(r => r.status === "acceptee" || (r.status === "acceptee2" && r.type === "achat"))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_B")} />;
+      return <QueueView role="B" allRequests={requests} workflowConfig={workflowConfig} requests={requests.filter(r => isPendingForRole(r, "B", workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_B")} />;
     }
     if (view === "queue_C1") {
-      return <QueueView role="C1" allRequests={requests} label="Agent administratif" requests={requests.filter(r => ["validee","commandee","partiellement_traitee"].includes(r.status) && ["achat","activite"].includes(r.type))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
+      return <QueueView role="C1" allRequests={requests} workflowConfig={workflowConfig} label="Agent administratif" requests={requests.filter(r => isPendingC1(r, workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
     }
     if (view === "queue_C2") {
-      return <QueueView role="C2" allRequests={requests} label="Magasinier" requests={requests.filter(r => (["validee","commandee","partiellement_traitee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition"))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C2")} />;
+      return <QueueView role="C2" allRequests={requests} workflowConfig={workflowConfig} label="Magasinier" requests={requests.filter(r => isPendingC2(r, workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C2")} />;
     }
     if (view === "queue_C3") {
-      return <QueueView role="C3" allRequests={requests} label="Concierge" requests={requests.filter(r => r.status === "validee_C3" && r.type === "requisition")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C3")} />;
+      return <QueueView role="C3" allRequests={requests} workflowConfig={workflowConfig} label="Concierge" requests={requests.filter(isPendingC3)} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C3")} />;
     }
     if (view === "history") {
-      return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} />;
+      return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} workflowConfig={workflowConfig} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} />;
     }
-    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} />;
+    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
   }
 
   return (

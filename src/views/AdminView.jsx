@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
 import { S } from "../styles";
+import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -29,6 +30,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
 
   const TABS = [
     { id: "droits",        label: "Gestion des droits",             icon: "👥" },
+    { id: "parcours",      label: "Parcours des demandes",          icon: "🧭" },
     { id: "approbateurs",  label: "Assignation des approbateurs",   icon: "📋" },
     { id: "statuts",       label: "Définitions des statuts",        icon: "🏷️" },
     { id: "achat",         label: "Formulaire — Achat matériel",    icon: "🛒" },
@@ -226,6 +228,11 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               ℹ️ Les ajouts et retraits sont temporaires jusqu'à ce que vous cliquiez sur « Enregistrer les modifications ».
             </p>
           </div>
+        )}
+
+        {/* ── Onglet : Parcours des demandes ── */}
+        {activeTab === "parcours" && (
+          <AdminWorkflowTab workflowConfig={workflowConfig} onUpdateWorkflowConfig={onUpdateWorkflowConfig} />
         )}
 
         {/* ── Onglet : Définitions des statuts ── */}

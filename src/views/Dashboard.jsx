@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { COLORS, STATUSES, REQUEST_TYPES, CUSTOM_EVENT_COLORS } from "../constants";
+import { COLORS, REQUEST_TYPES, CUSTOM_EVENT_COLORS } from "../constants";
 import { S } from "../styles";
+import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta } from "../utils/workflow";
 
-export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents }) {
+export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents, workflowConfig }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
@@ -10,13 +11,13 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
   const [savingEvent, setSavingEvent] = useState(false);
   const canManageCalendar = user.roles.includes("C1") || user.roles.includes("D");
   const myRequests = requests.filter((r) => r.authorId === user.id);
-  const pendingA  = requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && user.roles.includes("A")
+  const pendingA  = requests.filter(r => isPendingForRole(r, "A", workflowConfig) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
-  const pendingA2 = requests.filter(r => r.status === "acceptee" && r.type === "achat" && user.roles.includes("A2"));
-  const pendingB  = requests.filter(r => (r.status === "acceptee" || (r.status === "acceptee2" && r.type === "achat")) && user.roles.includes("B"));
-  const pendingC1 = requests.filter(r => ["validee","commandee","partiellement_traitee"].includes(r.status) && ["achat","activite"].includes(r.type) && user.roles.includes("C1"));
-  const pendingC2 = requests.filter(r => ((["validee","commandee","partiellement_traitee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition")) && user.roles.includes("C2"));
-  const pendingC3 = requests.filter(r => r.status === "validee_C3" && r.type === "requisition" && user.roles.includes("C3"));
+  const pendingA2 = requests.filter(r => isPendingForRole(r, "A2", workflowConfig) && user.roles.includes("A2"));
+  const pendingB  = requests.filter(r => isPendingForRole(r, "B", workflowConfig) && user.roles.includes("B"));
+  const pendingC1 = requests.filter(r => isPendingC1(r, workflowConfig) && user.roles.includes("C1"));
+  const pendingC2 = requests.filter(r => isPendingC2(r, workflowConfig) && user.roles.includes("C2"));
+  const pendingC3 = requests.filter(r => isPendingC3(r) && user.roles.includes("C3"));
 
   function statusCount(st) {
     return myRequests.filter((r) => r.status === st).length;
@@ -207,7 +208,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
                       <div key={r.id} style={{ padding: "10px 14px", marginBottom: 8, background: isCompleted ? "#f0fdf4" : "#fefce8", border: `1px solid ${isCompleted ? "#86efac" : "#fde68a"}`, borderRadius: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                           <span style={{ fontWeight: 700, fontSize: 14, color: COLORS.bleu }}>{fd.nomActivite || fd["Nom de l'activité"] || r.title}</span>
-                          <span style={{ ...S.badge(STATUSES[r.status]?.color || COLORS.gris) }}>{STATUSES[r.status]?.label}</span>
+                          <span style={{ ...S.badge(getStatusMeta(r.type, r.status, workflowConfig).color) }}>{getStatusMeta(r.type, r.status, workflowConfig).label}</span>
                         </div>
                         {dInfo && <div style={{ fontSize: 12, color: COLORS.gris }}>{dInfo.heureDebut && dInfo.heureFin ? `${dInfo.heureDebut} – ${dInfo.heureFin}` : ""}</div>}
                         <div style={{ fontSize: 12, marginTop: 3 }}><strong>Niveaux :</strong> {(fd.niveauxConcernes || []).join(", ") || "—"} &nbsp;·&nbsp; <strong>Groupes :</strong> {fd.groupes || "—"}</div>
@@ -388,7 +389,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
             </thead>
             <tbody>
               {myRequests.map((r, i) => {
-                const st = STATUSES[r.status] || { label: r.status, color: "#6b7280" };
+                const st = getStatusMeta(r.type, r.status, workflowConfig);
                 return (
                   <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                     <td style={S.td}>{r.id}</td>

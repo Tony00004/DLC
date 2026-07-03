@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { COLORS, STATUSES, REQUEST_TYPES } from "../constants";
+import { COLORS, REQUEST_TYPES } from "../constants";
 import { S } from "../styles";
 import { printHTML } from "../utils/print";
-
-const STATUTS_LABEL = { soumise: "Soumise", acceptee: "Approuvée", acceptee2: "Approuvée (Approbateur +)", validee: "Vérifiée", validee_C2: "Attribuée — Magasinier", validee_C3: "Attribuée — Concierge", commandee: "En commande", partiellement_traitee: "Partiellement complétée", traitee: "Traitée", refusee: "Refusée", annulee: "Annulée" };
+import { ROLE_LABELS, getAvailableAdvance, canRoleRefuse, getActionLabel, getStatusMeta, getFinalApprovalStatus } from "../utils/workflow";
 
 function authInfo(auth) {
   if (!auth || !auth.decision) return { label: "En attente", color: COLORS.gris, italic: true };
@@ -51,11 +50,10 @@ function buildTableHTML(headers, rows, title) {
   );
 }
 
-export function QueueView({ role, label, requests, allRequests, user, onAction, onBack, setSelectedRequest, setView, onSetPrevView }) {
+export function QueueView({ role, label, requests, allRequests, user, onAction, onBack, setSelectedRequest, setView, onSetPrevView, workflowConfig }) {
   const filtered = requests; // demandes en attente (pré-filtrées)
-  const actionMap = { A: "acceptee", A2: "acceptee2", B: "validee", C1: "traitee", C2: "traitee", C3: "traitee" };
-  const roleLabels = { A: "Approuver", A2: "Approuver", B: "Vérifier", C1: "Traiter", C2: "Traiter", C3: "Traiter" };
-  const roleDisplay = label || (role === "A" ? "Approbateur" : role === "A2" ? "Approbateur +" : role === "B" ? "Vérificateur" : role === "C1" ? "Agent administratif" : role === "C2" ? "Magasinier" : role === "C3" ? "Concierge" : role);
+  const isAdmin = user.roles.includes("D");
+  const roleDisplay = label || ROLE_LABELS[role] || role;
 
   // Demandes traitées : celles où l'utilisateur a agi (dans l'historique)
   const traitees = allRequests ? allRequests.filter(r =>
@@ -73,9 +71,10 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   const achatsPendants = isAgentQueue ? filtered.filter(r => r.type === "achat") : [];
   const activitesTraitees = isAgentQueue ? traitees.filter(r => r.type === "activite") : [];
   const achatsTraitees = isAgentQueue ? traitees.filter(r => r.type === "achat") : [];
-  // Achats : nouvelles demandes (pas encore de commande) vs matériel déjà en commande.
-  const achatsNouvelles = achatsPendants.filter(r => r.status === "validee");
-  const achatsEnCommande = achatsPendants.filter(r => r.status !== "validee");
+  // Achats : nouvelles demandes (fin de la chaîne d'approbation) vs matériel déjà en commande.
+  const achatFinalStatus = getFinalApprovalStatus("achat", workflowConfig);
+  const achatsNouvelles = achatsPendants.filter(r => r.status === achatFinalStatus);
+  const achatsEnCommande = achatsPendants.filter(r => r.status !== achatFinalStatus);
 
   function goToRequest(r) {
     setSelectedRequest(r);
@@ -83,15 +82,21 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
     setTimeout(() => setView("detail"), 0);
   }
 
-  // Seuls l'Approbateur, l'Approbateur + et le Vérificateur peuvent refuser une demande.
-  const canRefuse = role === "A" || role === "A2" || role === "B";
-
   function actionButtons(r) {
+    const advance = getAvailableAdvance(r.type, r.status, [role], workflowConfig, isAdmin);
+    const refusable = canRoleRefuse(r.type, role, workflowConfig) || isAdmin;
+    // Une réquisition en fin de chaîne se termine par un choix d'attribution (Magasinier/Concierge)
+    // qui nécessite d'ouvrir la fiche détail plutôt qu'une action rapide depuis la liste.
+    const showAdvanceHere = advance && !(r.type === "requisition" && advance.isLast);
     return (
       <div style={{ display: "flex", gap: 6 }}>
         <button style={{ ...S.btn, padding: "4px 10px", fontSize: 12 }} onClick={() => goToRequest(r)}>Voir</button>
-        <button style={{ ...S.btnPrimary, padding: "4px 10px", fontSize: 12 }} onClick={() => onAction(r.id, actionMap[role], "", user)}>{roleLabels[role]}</button>
-        {canRefuse && <button style={{ ...S.btnDanger, padding: "4px 10px", fontSize: 12 }} onClick={() => onAction(r.id, "refusee", "", user)}>Refuser</button>}
+        {showAdvanceHere && (
+          <button style={{ ...S.btnPrimary, padding: "4px 10px", fontSize: 12 }} onClick={() => onAction(r.id, advance.stage.id, "", user)}>
+            {getActionLabel(advance.stage)}
+          </button>
+        )}
+        {refusable && <button style={{ ...S.btnDanger, padding: "4px 10px", fontSize: 12 }} onClick={() => onAction(r.id, "refusee", "", user)}>Refuser</button>}
       </div>
     );
   }
@@ -111,7 +116,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           {list.map((r, i) => {
             const cpe = withAuth ? authInfo(r.formData?.cpeAuth) : null;
             const ce = withAuth ? authInfo(r.formData?.ceAuth) : null;
-            const st = withStatus ? (STATUSES[r.status] || { label: r.status, color: "#6b7280" }) : null;
+            const st = withStatus ? getStatusMeta(r.type, r.status, workflowConfig) : null;
             return (
               <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                 <td style={S.td}>{r.id}</td>
@@ -140,7 +145,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
         <tbody>
           {list.map((r, i) => {
             const monAction = [...(r.history || [])].reverse().find(h => h.by === user.name);
-            const st = STATUSES[r.status] || { label: r.status, color: "#6b7280" };
+            const st = getStatusMeta(r.type, r.status, workflowConfig);
             const cpe = withAuth ? authInfo(r.formData?.cpeAuth) : null;
             const ce = withAuth ? authInfo(r.formData?.ceAuth) : null;
             return (
@@ -187,7 +192,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
         `${fd.coutTransport || "0"} $`,
         `${fd.autreMontant || "0"} $`,
         fd["Total estimé"] || "",
-        STATUTS_LABEL[r.status] || r.status,
+        getStatusMeta(r.type, r.status, workflowConfig).label,
         fmtAuthLong(fd.cpeAuth),
         fmtAuthLong(fd.ceAuth),
       ];
@@ -205,7 +210,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
     const achatHeaders = ["Nº", "Titre", "Demandeur", "Date", "Statut", "Prix total"];
     const achatRows = achatsPendants.map(r => [
       r.requestNumber || r.id, r.title, r.authorName, r.date,
-      STATUTS_LABEL[r.status] || r.status,
+      getStatusMeta(r.type, r.status, workflowConfig).label,
       (r.formData && r.formData.total) ? r.formData.total : "—",
     ]);
 
@@ -225,7 +230,6 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           {(role === "A" || role === "A2" || role === "B") && (
             <button onClick={() => {
               var CATS = { achat: "Demande d'achat de matériel", activite: "Demande d'activité et de sortie", requisition: "Demande de réquisition interne" };
-              var STATUTS = STATUTS_LABEL;
               var headers = ["Numéro", "Catégorie", "Titre", "Demandeur", "Statut", "Prix total", "Mon action", "Date action"];
               var allRows = filtered.concat(traitees);
               var rows = allRows.map(function(r) {
@@ -233,9 +237,9 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                 return [
                   r.requestNumber || r.id,
                   CATS[r.type] || r.type, r.title, r.authorName,
-                  STATUTS[r.status] || r.status,
+                  getStatusMeta(r.type, r.status, workflowConfig).label,
                   (r.formData && r.formData.total) ? r.formData.total : (r.type === "requisition" ? "N/A" : "—"),
-                  monAction ? (STATUTS[monAction.status] || monAction.status) : "En attente",
+                  monAction ? getStatusMeta(r.type, monAction.status, workflowConfig).label : "En attente",
                   monAction ? monAction.date : "",
                 ];
               });
@@ -359,7 +363,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                   <tbody>
                     {traitees.map((r, i) => {
                       const monAction = [...(r.history||[])].reverse().find(h => h.by === user.name);
-                      const st = STATUSES[r.status] || { label: r.status, color: "#6b7280" };
+                      const st = getStatusMeta(r.type, r.status, workflowConfig);
                       return (
                         <tr key={r.id} style={{ background: i%2===0?"#fff":"#fafafa" }}>
                           <td style={{ ...S.td, fontFamily:"monospace", fontSize:12 }}>{r.requestNumber||r.id}</td>

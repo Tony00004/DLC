@@ -1,89 +1,71 @@
 import { useState } from "react";
-import { COLORS, STATUSES, REQUEST_TYPES } from "../constants";
+import { COLORS, REQUEST_TYPES } from "../constants";
 import { S } from "../styles";
 import { printZone } from "../utils/print";
+import {
+  getCreationStatus, getCreationLabel, getApprovalStages, statusBeforeStage, getFinalApprovalStatus,
+  getAvailableAdvance, isPendingC1, isPendingC2, isPendingC3, canRoleRefuse, getActionLabel, getStatusMeta,
+  allowsMagasinier, allowsConcierge,
+} from "../utils/workflow";
 
-export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onReactivate }) {
+export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onReactivate, workflowConfig }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
   const [cpeLocal, setCpeLocal] = useState(request.formData?.cpeAuth || { decision: null, date: "", comment: "" });
   const [ceLocal,  setCeLocal]  = useState(request.formData?.ceAuth  || { decision: null, date: "", comment: "" });
   const [savingAuth, setSavingAuth] = useState(false);
-  // Étapes selon le type de demande
-  const isRequisition = request.type === "requisition";
-  const steps = isRequisition
-    ? [
-        { key: "soumise",  label: "Soumise",    icon: "📝" },
-        { key: "acceptee", label: "Reçue",       icon: "📬" },
-        { key: "validee",  label: "Vérifiée",    icon: "✅" },
-        { key: "traitee",  label: "Complétée",   icon: "🔧" },
-      ]
-    : request.type === "achat"
-    ? [
-        { key: "soumise",   label: "Soumise",       icon: "📝" },
-        { key: "acceptee",  label: "Approuvée",     icon: "👍" },
-        { key: "acceptee2", label: "Approuvée +",   icon: "👍" },
-        { key: "validee",   label: "Vérifiée",      icon: "✅" },
-        { key: "commandee", label: "En commande",   icon: "📦" },
-        { key: "traitee",   label: "Complétée",     icon: "🏁" },
-      ]
-    : [
-        { key: "soumise",  label: "Soumise",    icon: "📝" },
-        { key: "acceptee", label: "Approuvée",  icon: "👍" },
-        { key: "validee",  label: "Vérifiée",   icon: "✅" },
-        { key: "traitee",  label: "Complétée",  icon: "🏁" },
-      ];
-  const currentIdx = steps.findIndex((s) => s.key === request.status);
 
   const canActRole = (role) => user.roles.includes(role);
   const isAdmin = user.roles.includes("D");
   const isAuthor = request.authorId === user.id;
 
-  // Déterminer le rôle exécutant selon le type de demande
-  const execRole = request.type === "requisition" ? "C3"
-                 : request.type === "achat"       ? "C1"
-                 : "C1"; // activite → secrétaire
+  // Étapes de progression, générées à partir de la chaîne configurée par l'administrateur pour ce type.
+  const approvalStages = getApprovalStages(request.type, workflowConfig);
+  const steps = [
+    { key: getCreationStatus(request.type), label: getCreationLabel(request.type), icon: "📝" },
+    ...approvalStages.map(s => ({ key: s.id, label: s.label, icon: "👍" })),
+    ...(request.type === "achat" ? [{ key: "commandee", label: "En commande", icon: "📦" }] : []),
+    { key: "traitee", label: "Complétée", icon: "🏁" },
+  ];
+  let currentIdx = steps.findIndex((s) => s.key === request.status);
+  if (currentIdx === -1 && request.type === "achat" && request.status === "partiellement_traitee") {
+    currentIdx = steps.findIndex(s => s.key === "commandee");
+  }
+  if (currentIdx === -1 && request.type === "requisition" && (request.status === "validee_C2" || request.status === "validee_C3")) {
+    currentIdx = steps.length - 2; // attribution en cours, juste avant « Complétée »
+  }
 
-  const isExecForType = canActRole(execRole) || isAdmin;
-  const isMagasinier = canActRole("C2") || isAdmin;
+  // Étape d'approbation que je peux faire progresser maintenant (rôle et libellé dynamiques).
+  const advance = getAvailableAdvance(request.type, request.status, user.roles, workflowConfig, isAdmin);
+  const isFinalApprovalStage = !!(advance && advance.isLast);
+  const refusableNow = !!advance && (canRoleRefuse(request.type, advance.stage.role, workflowConfig) || isAdmin);
 
-  // Approbation : seulement pour achat et activite
-  const canApprove = request.status === "soumise" && ["achat","activite"].includes(request.type)
-                     && (canActRole("A") || isAdmin);
-  // Approbateur + : autorisation supplémentaire exigée pour les demandes d'achat de matériel,
-  // après l'Approbateur (A) et avant le Vérificateur (B).
-  const canApprovePlus = request.status === "acceptee" && request.type === "achat"
-                        && (canActRole("A2") || isAdmin);
-  // Vérification : achat après double approbation, activité après approbation simple,
-  // réquisition dès soumise(=acceptee)
-  const canVerify = (request.type === "achat" ? request.status === "acceptee2" : request.status === "acceptee")
-                    && (canActRole("B") || isAdmin);
-  // Agent administratif (C1) traite achat/activite
-  const canSecretary = ["validee","commandee","partiellement_traitee"].includes(request.status)
-                       && ["achat","activite"].includes(request.type)
-                       && (canActRole("C1") || isAdmin);
-  // Magasinier (C2) — achat validée, en commande ou partiellement complétée
-  const canMagasinier = (
-    (["validee","commandee","partiellement_traitee"].includes(request.status) && request.type === "achat") ||
-    (request.status === "validee_C2" && request.type === "requisition")
-  ) && (canActRole("C2") || isAdmin);
-  // Concierge (C3) traite les réquisitions validées
-  const canConcierge = ["validee_C3"].includes(request.status)
-                       && request.type === "requisition"
-                       && (canActRole("C3") || isAdmin);
+  // Agent administratif (C1) traite achat/activite une fois la chaîne d'approbation terminée
+  const canSecretary = isPendingC1(request, workflowConfig) && (canActRole("C1") || isAdmin);
+  // Magasinier (C2) — achat en traitement final, ou réquisition attribuée
+  const canMagasinier = isPendingC2(request, workflowConfig) && (canActRole("C2") || isAdmin);
+  // Concierge (C3) traite les réquisitions attribuées
+  const canConcierge = isPendingC3(request) && (canActRole("C3") || isAdmin);
 
   // Droits de modification
-  const canAuthorEdit = isAuthor && request.status === "soumise" && ["achat","activite"].includes(request.type);
-  const authorBlockedByApproval = isAuthor && ["acceptee","acceptee2"].includes(request.status) && ["achat","activite"].includes(request.type);
-  const canApproverEdit = (canActRole("A") || isAdmin) && ["soumise","acceptee"].includes(request.status);
-  const approverBlockedByVerif = (canActRole("A") && !isAdmin) && ["validee","commandee","traitee"].includes(request.status);
+  const canAuthorEdit = isAuthor && request.status === getCreationStatus(request.type) && ["achat","activite"].includes(request.type);
+  const authorBlockedByApproval = isAuthor && ["achat","activite"].includes(request.type) && approvalStages.some(s => s.id === request.status);
+  const canApproverEdit = (canActRole("A") || isAdmin) && (
+    request.status === getCreationStatus(request.type) ||
+    approvalStages.some((s, i) => s.role === "A" && request.status === statusBeforeStage(request.type, i, workflowConfig))
+  );
+  const pastApprovalChain = ["achat","activite"].includes(request.type) && (isPendingC1(request, workflowConfig) || request.status === "traitee");
+  const approverBlockedByVerif = canActRole("A") && !isAdmin && pastApprovalChain;
   // Le magasinier (C2) ne peut PAS modifier — seulement consulter et commenter
   const canEdit = (canActRole("A") || canActRole("A2") || canActRole("B") || canActRole("C1") || canActRole("C3") || isAdmin)
                   && !["traitee","refusee","annulee"].includes(request.status);
-  const canCancel = isAuthor && ["soumise","acceptee","acceptee2"].includes(request.status);
+  const canCancel = isAuthor && (request.status === getCreationStatus(request.type) || approvalStages.some(s => s.id === request.status));
 
-  const approverName = request.history ? [...request.history].reverse().find(h => h.status === "acceptee")?.by : null;
-  const verifierName = request.history ? [...request.history].reverse().find(h => h.status === "validee")?.by : null;
+  const approverName = request.history && approvalStages[0]
+    ? [...request.history].reverse().find(h => h.status === approvalStages[0].id)?.by
+    : null;
+  const finalApprovalStatus = getFinalApprovalStatus(request.type, workflowConfig);
+  const verifierName = request.history ? [...request.history].reverse().find(h => h.status === finalApprovalStatus)?.by : null;
   const isTerminated = ["traitee","refusee","annulee"].includes(request.status);
 
   // Une demande refusée par l'Approbateur, l'Approbateur + ou le Vérificateur peut être
@@ -114,7 +96,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               {REQUEST_TYPES[request.type]}{request.requestNumber ? <span style={{ fontFamily: "monospace", marginLeft: 4 }}>· {request.requestNumber}</span> : ""} · Soumis le {request.date} par {request.authorName}
             </div>
           </div>
-          <span style={S.badge(STATUSES[request.status]?.color || COLORS.gris)}>{STATUSES[request.status]?.label}</span>
+          <span style={S.badge(getStatusMeta(request.type, request.status, workflowConfig).color)}>{getStatusMeta(request.type, request.status, workflowConfig).label}</span>
         </div>
 
         {/* Progression */}
@@ -190,7 +172,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                 </div>
                 {request.formData._rows && request.formData._rows.length > 0 && (() => {
                   const canManageItems = (canActRole("C1") || canActRole("C2") || isAdmin)
-                    && ["validee","commandee","partiellement_traitee","traitee"].includes(request.status);
+                    && [finalApprovalStatus, "commandee", "partiellement_traitee", "traitee"].includes(request.status);
                   const canManageCommandeCol = (canActRole("C1") || isAdmin) && canManageItems;
                   const rows = request.formData._rows;
                   function toggleItem(idx, field) {
@@ -399,8 +381,8 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
             <h3 style={S.sectionTitle}>Historique</h3>
             <div style={{ marginBottom: 8 }}>
               {request.history.map((h, i) => (
-                <div key={i} style={{ padding: "8px 12px", borderLeft: `3px solid ${STATUSES[h.status]?.color || COLORS.gris}`, marginBottom: 8, background: "#f9fafb", borderRadius: "0 4px 4px 0" }}>
-                  <strong style={{ fontSize: 13 }}>{STATUSES[h.status]?.label}</strong>
+                <div key={i} style={{ padding: "8px 12px", borderLeft: `3px solid ${getStatusMeta(request.type, h.status, workflowConfig).color}`, marginBottom: 8, background: "#f9fafb", borderRadius: "0 4px 4px 0" }}>
+                  <strong style={{ fontSize: 13 }}>{getStatusMeta(request.type, h.status, workflowConfig).label}</strong>
                   <span style={{ fontSize: 12, color: COLORS.gris, marginLeft: 8 }}>par {h.by} · {h.date}</span>
                   {h.comment && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#333" }}>{h.comment}</p>}
                   {h.adminComment && user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r)) && (
@@ -416,7 +398,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
 
         {/* ── Autorisations CPE / CÉ (activité seulement) ── */}
         {request.type === "activite" && (() => {
-          const isAtAgentStage = ["validee", "commandee", "partiellement_traitee"].includes(request.status);
+          const isAtAgentStage = isPendingC1(request, workflowConfig);
           const canEditAuth    = isAtAgentStage && (canSecretary || isAdmin);
           const hasAuthData    = cpeLocal.decision || ceLocal.decision;
           // Visible uniquement au stade agent administratif (ou après, si des données ont été sauvegardées)
@@ -514,7 +496,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                 <label style={S.label}>Commentaire (optionnel)</label>
                 <textarea style={S.textarea} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ajouter un commentaire..." rows={3} />
               </div>
-              {(canApprove || canApprovePlus || canVerify || canSecretary || canMagasinier || canConcierge || isAdmin) && (
+              {(!!advance || canSecretary || canMagasinier || canConcierge || isAdmin) && (
                 <div>
                   <label style={{ ...S.label, color: COLORS.bleu }}>Commentaire administratif (optionnel)</label>
                   <textarea style={{ ...S.textarea, borderColor: "#93c5fd", background: "#eff6ff" }} value={adminComment} onChange={(e) => setAdminComment(e.target.value)} placeholder="Note interne visible uniquement par les rôles administratifs..." rows={3} />
@@ -524,37 +506,26 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
 
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
 
-              {/* ── Approbateur (A) — achat et activité ── */}
-              {canApprove && (
+              {/* ── Étape d'approbation courante (rôle et libellé définis par la chaîne configurée) ── */}
+              {advance && !(request.type === "requisition" && isFinalApprovalStage) && (
                 <>
-                  <button style={btnVert} onClick={() => onAction(request.id, "acceptee", comment, user, adminComment)}>Accepter</button>
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
+                  <button style={btnVert} onClick={() => onAction(request.id, advance.stage.id, comment, user, adminComment)}>
+                    {getActionLabel(advance.stage)}
+                  </button>
+                  {refusableNow && <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>}
                 </>
               )}
 
-              {/* ── Approbateur + (A2) — achat de matériel seulement, avant le vérificateur ── */}
-              {canApprovePlus && (
+              {/* ── Attribution finale d'une réquisition (Magasinier / Concierge) ── */}
+              {advance && request.type === "requisition" && isFinalApprovalStage && (
                 <>
-                  <button style={btnVert} onClick={() => onAction(request.id, "acceptee2", comment, user, adminComment)}>Accepter</button>
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
-                </>
-              )}
-
-              {/* ── Vérificateur (B) ── */}
-              {canVerify && !canApprove && (
-                <>
-                  {request.type === "requisition" ? (
-                    <>
-                      <button style={btnVert} onClick={() => onAction(request.id, "validee_C3", comment, user, adminComment)}>Attribuer au Concierge</button>
-                      <button style={{ ...btnVert, background: "#0891b2", borderColor: "#0891b2" }} onClick={() => onAction(request.id, "validee_C2", comment, user, adminComment)}>Attribuer au Magasinier</button>
-                      <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
-                    </>
-                  ) : (
-                    <>
-                      <button style={btnVert} onClick={() => onAction(request.id, "validee", comment, user, adminComment)}>Vérifier</button>
-                      <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
-                    </>
+                  {allowsConcierge(workflowConfig) && (
+                    <button style={btnVert} onClick={() => onAction(request.id, "validee_C3", comment, user, adminComment)}>Attribuer au Concierge</button>
                   )}
+                  {allowsMagasinier(workflowConfig) && (
+                    <button style={{ ...btnVert, background: "#0891b2", borderColor: "#0891b2" }} onClick={() => onAction(request.id, "validee_C2", comment, user, adminComment)}>Attribuer au Magasinier</button>
+                  )}
+                  {refusableNow && <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>}
                 </>
               )}
 
@@ -627,7 +598,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               )}
 
               {/* ── Séparateur ── */}
-              {(canApproverEdit || canEdit) && (canApprove || canApprovePlus || canVerify || canSecretary || canMagasinier || canConcierge) && (
+              {(canApproverEdit || canEdit) && (!!advance || canSecretary || canMagasinier || canConcierge) && (
                 <span style={{ width: 1, height: 32, background: "#e5e7eb", display: "inline-block", margin: "0 4px" }} />
               )}
 
