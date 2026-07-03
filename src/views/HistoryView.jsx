@@ -19,7 +19,8 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
     : requests.filter(function(r) {
         var actedOn = r.history && r.history.some(function(h) { return h.by === user.name; });
         var inQueue = (user.roles.includes("A") && ["soumise"].includes(r.status) && ["achat","activite"].includes(r.type))
-          || (user.roles.includes("B") && r.status === "acceptee")
+          || (user.roles.includes("A2") && r.status === "acceptee" && r.type === "achat")
+          || (user.roles.includes("B") && (r.status === "acceptee" || (r.status === "acceptee2" && r.type === "achat")))
           || (user.roles.includes("C1") && r.status === "validee" && ["achat","activite"].includes(r.type))
           || (user.roles.includes("C2") && ["validee","commandee"].includes(r.status) && r.type === "achat")
           || (user.roles.includes("C3") && r.status === "validee" && r.type === "requisition");
@@ -66,7 +67,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   }).sort(function(a, b) { return b.date.localeCompare(a.date); });
 
   // Compteurs sur toutes les demandes visibles (pas juste le filtre)
-  var nbEnCours = allVisible.filter(function(r) { return ["soumise","acceptee","validee"].includes(r.status); }).length;
+  var nbEnCours = allVisible.filter(function(r) { return ["soumise","acceptee","acceptee2","validee"].includes(r.status); }).length;
   var nbTraitees = allVisible.filter(function(r) { return r.status === "traitee"; }).length;
   var nbRefusees = allVisible.filter(function(r) { return ["refusee","annulee"].includes(r.status); }).length;
 

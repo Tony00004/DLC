@@ -3,7 +3,7 @@ import { COLORS, STATUSES, REQUEST_TYPES } from "../constants";
 import { S } from "../styles";
 import { printZone } from "../utils/print";
 
-export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations }) {
+export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onReactivate }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
   const [cpeLocal, setCpeLocal] = useState(request.formData?.cpeAuth || { decision: null, date: "", comment: "" });
@@ -20,11 +20,12 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
       ]
     : request.type === "achat"
     ? [
-        { key: "soumise",   label: "Soumise",     icon: "📝" },
-        { key: "acceptee",  label: "Approuvée",   icon: "👍" },
-        { key: "validee",   label: "Vérifiée",    icon: "✅" },
-        { key: "commandee", label: "En commande", icon: "📦" },
-        { key: "traitee",   label: "Complétée",   icon: "🏁" },
+        { key: "soumise",   label: "Soumise",       icon: "📝" },
+        { key: "acceptee",  label: "Approuvée",     icon: "👍" },
+        { key: "acceptee2", label: "Approuvée +",   icon: "👍" },
+        { key: "validee",   label: "Vérifiée",      icon: "✅" },
+        { key: "commandee", label: "En commande",   icon: "📦" },
+        { key: "traitee",   label: "Complétée",     icon: "🏁" },
       ]
     : [
         { key: "soumise",  label: "Soumise",    icon: "📝" },
@@ -49,8 +50,14 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   // Approbation : seulement pour achat et activite
   const canApprove = request.status === "soumise" && ["achat","activite"].includes(request.type)
                      && (canActRole("A") || isAdmin);
-  // Vérification : achat+activite après approbation, réquisition dès soumise(=acceptee)
-  const canVerify = request.status === "acceptee" && (canActRole("B") || isAdmin);
+  // Approbateur + : autorisation supplémentaire exigée pour les demandes d'achat de matériel,
+  // après l'Approbateur (A) et avant le Vérificateur (B).
+  const canApprovePlus = request.status === "acceptee" && request.type === "achat"
+                        && (canActRole("A2") || isAdmin);
+  // Vérification : achat après double approbation, activité après approbation simple,
+  // réquisition dès soumise(=acceptee)
+  const canVerify = (request.type === "achat" ? request.status === "acceptee2" : request.status === "acceptee")
+                    && (canActRole("B") || isAdmin);
   // Agent administratif (C1) traite achat/activite
   const canSecretary = ["validee","commandee","partiellement_traitee"].includes(request.status)
                        && ["achat","activite"].includes(request.type)
@@ -60,10 +67,6 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
     (["validee","commandee","partiellement_traitee"].includes(request.status) && request.type === "achat") ||
     (request.status === "validee_C2" && request.type === "requisition")
   ) && (canActRole("C2") || isAdmin);
-  // Agent administratif peut marquer "en commande" une demande d'achat validée
-  const canMarkCommande = request.status === "validee"
-                          && request.type === "achat"
-                          && (canActRole("C1") || isAdmin);
   // Concierge (C3) traite les réquisitions validées
   const canConcierge = ["validee_C3"].includes(request.status)
                        && request.type === "requisition"
@@ -71,17 +74,25 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
 
   // Droits de modification
   const canAuthorEdit = isAuthor && request.status === "soumise" && ["achat","activite"].includes(request.type);
-  const authorBlockedByApproval = isAuthor && request.status === "acceptee" && ["achat","activite"].includes(request.type);
+  const authorBlockedByApproval = isAuthor && ["acceptee","acceptee2"].includes(request.status) && ["achat","activite"].includes(request.type);
   const canApproverEdit = (canActRole("A") || isAdmin) && ["soumise","acceptee"].includes(request.status);
   const approverBlockedByVerif = (canActRole("A") && !isAdmin) && ["validee","commandee","traitee"].includes(request.status);
   // Le magasinier (C2) ne peut PAS modifier — seulement consulter et commenter
-  const canEdit = (canActRole("A") || canActRole("B") || canActRole("C1") || canActRole("C3") || isAdmin)
+  const canEdit = (canActRole("A") || canActRole("A2") || canActRole("B") || canActRole("C1") || canActRole("C3") || isAdmin)
                   && !["traitee","refusee","annulee"].includes(request.status);
-  const canCancel = isAuthor && ["soumise","acceptee"].includes(request.status);
+  const canCancel = isAuthor && ["soumise","acceptee","acceptee2"].includes(request.status);
 
   const approverName = request.history ? [...request.history].reverse().find(h => h.status === "acceptee")?.by : null;
   const verifierName = request.history ? [...request.history].reverse().find(h => h.status === "validee")?.by : null;
   const isTerminated = ["traitee","refusee","annulee"].includes(request.status);
+
+  // Une demande refusée par l'Approbateur, l'Approbateur + ou le Vérificateur peut être
+  // réactivée ultérieurement par l'un de ces rôles — elle reprend alors à l'étape où elle
+  // se trouvait juste avant le refus.
+  const reactivateTarget = request.status === "refusee" && request.history
+    ? ([...request.history].reverse().find(h => h.status !== "refusee")?.status || "soumise")
+    : null;
+  const canReactivate = !!reactivateTarget && (canActRole("A") || canActRole("A2") || canActRole("B") || isAdmin);
 
   const btnVert = { background: "#008c4a", color: "#fff", border: "1px solid #006c39", borderRadius: 6, padding: "10px 18px", fontSize: 14, cursor: "pointer", fontWeight: 700 };
   const btnJaune = { background: "#ca8a04", color: "#fff", border: "1px solid #a16207", borderRadius: 6, padding: "10px 18px", fontSize: 14, cursor: "pointer", fontWeight: 700 };
@@ -392,7 +403,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   <strong style={{ fontSize: 13 }}>{STATUSES[h.status]?.label}</strong>
                   <span style={{ fontSize: 12, color: COLORS.gris, marginLeft: 8 }}>par {h.by} · {h.date}</span>
                   {h.comment && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#333" }}>{h.comment}</p>}
-                  {h.adminComment && user.roles.some(r => ["A","B","C1","C2","C3","D"].includes(r)) && (
+                  {h.adminComment && user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r)) && (
                     <div style={{ marginTop: 6, padding: "6px 10px", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 4, fontSize: 12, color: "#1e40af" }}>
                       <strong>Note administrative :</strong> {h.adminComment}
                     </div>
@@ -479,17 +490,31 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
         })()}
 
         {/* Panneau d'actions */}
-        {!isTerminated && (
+        {(!isTerminated || canReactivate) && (
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 20, marginTop: 4 }}>
             <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 700 }}>Actions</h3>
 
+            {/* ── Réactivation (Approbateur, Approbateur + ou Vérificateur) ── */}
+            {canReactivate && (
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ margin: "0 0 10px", fontSize: 13, color: COLORS.gris }}>
+                  Cette demande a été refusée. Vous pouvez la réactiver — elle reprendra son traitement à l'étape où elle se trouvait avant le refus.
+                </p>
+                <button style={btnVert} onClick={() => onReactivate(request.id, reactivateTarget, user)}>
+                  ↩ Réactiver la demande
+                </button>
+              </div>
+            )}
+
+            {!isTerminated && (
+            <>
             {/* Commentaires : standard (tous) + administratif (rôles) */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
               <div>
                 <label style={S.label}>Commentaire (optionnel)</label>
                 <textarea style={S.textarea} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ajouter un commentaire..." rows={3} />
               </div>
-              {(canApprove || canVerify || canSecretary || canMagasinier || canConcierge || isAdmin) && (
+              {(canApprove || canApprovePlus || canVerify || canSecretary || canMagasinier || canConcierge || isAdmin) && (
                 <div>
                   <label style={{ ...S.label, color: COLORS.bleu }}>Commentaire administratif (optionnel)</label>
                   <textarea style={{ ...S.textarea, borderColor: "#93c5fd", background: "#eff6ff" }} value={adminComment} onChange={(e) => setAdminComment(e.target.value)} placeholder="Note interne visible uniquement par les rôles administratifs..." rows={3} />
@@ -503,6 +528,14 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               {canApprove && (
                 <>
                   <button style={btnVert} onClick={() => onAction(request.id, "acceptee", comment, user, adminComment)}>Accepter</button>
+                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
+                </>
+              )}
+
+              {/* ── Approbateur + (A2) — achat de matériel seulement, avant le vérificateur ── */}
+              {canApprovePlus && (
+                <>
+                  <button style={btnVert} onClick={() => onAction(request.id, "acceptee2", comment, user, adminComment)}>Accepter</button>
                   <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                 </>
               )}
@@ -528,15 +561,17 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               {/* ── Agent administratif (C1) — achat et activité ── */}
               {canSecretary && (
                 <>
-                  {canMarkCommande && request.type === "achat" && (
-                    <button style={btnOrange} onClick={() => onAction(request.id, "commandee", comment, user, adminComment)}>
-                      Marquer items en commande
-                    </button>
-                  )}
                   {request.type === "achat" && request.formData?._rows && (() => {
                     const rows = request.formData._rows;
                     const tousRecus = rows.length > 0 && rows.every(r => r.recu);
                     const certainsRecus = rows.some(r => r.recu) && !tousRecus;
+                    const tousCommandes = rows.length > 0 && rows.every(r => r.commande);
+                    const certainsCommandes = rows.some(r => r.commande) && !tousCommandes;
+                    // Tant que tous les articles ne sont pas cochés "commandé", la demande ne peut
+                    // pas être marquée complétée : elle doit rester partiellement complétée pour
+                    // que l'agent administratif puisse continuer à y laisser des commentaires.
+                    // Le statut "En commande" est déduit automatiquement (dès qu'au moins un article
+                    // est coché commandé) plutôt que d'être déclenché par un bouton séparé.
                     return (
                       <>
                         {certainsRecus && (
@@ -544,9 +579,16 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                             Enregistrer réception partielle
                           </button>
                         )}
-                        <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
-                          {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
-                        </button>
+                        {!certainsRecus && !tousCommandes && (
+                          <button style={btnOrange} onClick={() => onAction(request.id, certainsCommandes ? "commandee" : "partiellement_traitee", comment, user, adminComment, rows)}>
+                            Marquer comme partiellement complétée
+                          </button>
+                        )}
+                        {tousCommandes && (
+                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
+                            {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
+                          </button>
+                        )}
                       </>
                     );
                   })()}
@@ -555,7 +597,6 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                       Marquer comme complétée
                     </button>
                   )}
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                 </>
               )}
 
@@ -574,23 +615,19 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
                       {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
                     </button>
-                    <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
                   </>
                 );
               })()}
 
               {/* ── Concierge (C3) — réquisition interne ── */}
               {canConcierge && (
-                <>
-                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
-                    Marquer comme complétée
-                  </button>
-                  <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>
-                </>
+                <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
+                  Marquer comme complétée
+                </button>
               )}
 
               {/* ── Séparateur ── */}
-              {(canApproverEdit || canEdit) && (canApprove || canVerify || canSecretary || canMagasinier || canConcierge) && (
+              {(canApproverEdit || canEdit) && (canApprove || canApprovePlus || canVerify || canSecretary || canMagasinier || canConcierge) && (
                 <span style={{ width: 1, height: 32, background: "#e5e7eb", display: "inline-block", margin: "0 4px" }} />
               )}
 
@@ -636,6 +673,8 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               )}
 
             </div>
+            </>
+            )}
           </div>
         )}
 

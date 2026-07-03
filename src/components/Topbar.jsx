@@ -19,7 +19,7 @@ export function Topbar({ user, onLogout, setView, requests }) {
               <div style={{ color: "#fff", fontSize: 13, fontWeight: 700 }}>{user.name}</div>
               <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 11 }}>
                 {user.roles.length > 0
-                  ? user.roles.map(r => r === "A" ? "Approbateur" : r === "B" ? "Vérificateur" : r === "C1" ? "Agent administratif" : r === "C2" ? "Magasinier" : r === "C3" ? "Concierge" : r === "D" ? "Administrateur" : r).join(", ")
+                  ? user.roles.map(r => r === "A" ? "Approbateur" : r === "A2" ? "Approbateur +" : r === "B" ? "Vérificateur" : r === "C1" ? "Agent administratif" : r === "C2" ? "Magasinier" : r === "C3" ? "Concierge" : r === "D" ? "Administrateur" : r).join(", ")
                   : "Utilisateur"}
               </div>
             </div>

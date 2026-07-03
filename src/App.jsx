@@ -32,10 +32,11 @@ export default function App() {
   const [statusDefinitions, setStatusDefinitions] = useState({
     soumise:   "Demande envoyée à la direction répondante",
     acceptee:  "Demande acceptée par votre direction répondante et envoyée à la gestionnaire administrative",
+    acceptee2: "Demande approuvée une première fois et en attente d'autorisation de l'Approbateur +",
     validee:   "Demande acceptée par la gestionnaire administrative et en attente d'être traitée par l'agent administratif",
     traitee:   "Demande terminée",
     commandee:             "Articles commandés — en attente de réception",
-    partiellement_traitee: "Certains articles ont été reçus — la demande est en attente de réception complète",
+    partiellement_traitee: "Une partie des articles a été commandée ou reçue — la demande sera traitée à nouveau ultérieurement",
     refusee:   "Demande refusée par la direction ou la gestionnaire administrative",
     annulee:   "Demande annulée par le demandeur ou la demandeuse",
   });
@@ -117,11 +118,12 @@ export default function App() {
     // Messages de confirmation selon l'action
     const confirmMessages = {
       acceptee:   "Confirmer l'approbation de cette demande ?",
+      acceptee2:  "Confirmer l'approbation (Approbateur +) de cette demande ?\n\nLa demande sera transmise au vérificateur.",
       validee:    "Confirmer la vérification ?\n\nLa demande sera transmise à l'agent administratif pour traitement.",
       validee_C2: "Attribuer cette réquisition au Magasinier ?\n\nIl pourra la traiter et la compléter.",
       validee_C3: "Attribuer cette réquisition au Concierge ?\n\nIl pourra la traiter et la compléter.",
       commandee:             "Confirmer que les items ont été commandés ?",
-      partiellement_traitee: "Enregistrer la réception partielle ?\n\nLa demande restera accessible au magasinier.",
+      partiellement_traitee: "Enregistrer la demande comme partiellement complétée ?\n\nElle restera dans la file d'attente pour un traitement ultérieur.",
       traitee:               "Confirmer que la demande est complétée / traitée ?\n\nCette action est finale.",
       refusee:    "Confirmer le refus de cette demande ?",
       annulee:    "Confirmer l'annulation de cette demande ?",
@@ -227,6 +229,18 @@ export default function App() {
       setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
       if (selectedRequest?.id === reqId) setSelectedRequest(updated);
       setView("dashboard");
+    } catch (err) {
+      alert("Erreur : " + err.message);
+    }
+  }
+
+  async function handleReactivate(reqId, targetStatus, actionUser) {
+    if (!window.confirm("Réactiver cette demande ?\n\nElle reprendra son traitement à l'étape où elle se trouvait avant le refus.")) return;
+    try {
+      const updated = await api.actionRequest(reqId, { newStatus: targetStatus, comment: "Demande réactivée par " + actionUser.name, by: actionUser.name });
+      setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      if (selectedRequest?.id === reqId) setSelectedRequest(updated);
+      setView(prev => prev === "history" ? "history" : "detail");
     } catch (err) {
       alert("Erreur : " + err.message);
     }
@@ -340,6 +354,7 @@ export default function App() {
         onCancel={handleCancelRequest}
         onUpdateItems={handleUpdateItems}
         onSaveAuthorizations={handleSaveAuthorizations}
+        onReactivate={handleReactivate}
       />;
     }
     if (view === "edit_achat" && editContext) {
@@ -384,8 +399,11 @@ export default function App() {
     if (view === "queue_A") {
       return <QueueView role="A" allRequests={requests} requests={requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_A")} />;
     }
+    if (view === "queue_A2") {
+      return <QueueView role="A2" allRequests={requests} requests={requests.filter(r => r.status === "acceptee" && r.type === "achat")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_A2")} />;
+    }
     if (view === "queue_B") {
-      return <QueueView role="B" allRequests={requests} requests={requests.filter(r => r.status === "acceptee")} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_B")} />;
+      return <QueueView role="B" allRequests={requests} requests={requests.filter(r => r.status === "acceptee" || (r.status === "acceptee2" && r.type === "achat"))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_B")} />;
     }
     if (view === "queue_C1") {
       return <QueueView role="C1" allRequests={requests} label="Agent administratif" requests={requests.filter(r => ["validee","commandee","partiellement_traitee"].includes(r.status) && ["achat","activite"].includes(r.type))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
@@ -416,6 +434,7 @@ export default function App() {
             { key: "dashboard", label: "📊 Tableau de bord" },
             { key: "history", label: "📋 Historique" },
             ...(user.roles.includes("A") ? [{ key: "queue_A", label: "👍 Approbateur" }] : []),
+            ...(user.roles.includes("A2") ? [{ key: "queue_A2", label: "➕ Approbateur +" }] : []),
             ...(user.roles.includes("B") ? [{ key: "queue_B", label: "✅ Vérificateur" }] : []),
             ...(user.roles.includes("C1") ? [{ key: "queue_C1", label: "📝 Agent administratif" }] : []),
             ...(user.roles.includes("C2") ? [{ key: "queue_C2", label: "📦 Magasinier" }] : []),

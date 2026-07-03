@@ -18,6 +18,7 @@ export const config = { coutLiberationDefault: "233.34" };
 export const STATUSES = {
   soumise:               { label: "Soumise",                color: "#64748b" },
   acceptee:              { label: "Approuvée",              color: "#0284c7" },
+  acceptee2:             { label: "Approuvée (Approbateur +)", color: "#2563eb" },
   validee:               { label: "Vérifiée",               color: "#7c3aed" },
   commandee:             { label: "En commande",            color: "#ea580c" },
   partiellement_traitee: { label: "Partiellement complétée", color: "#f59e0b" },

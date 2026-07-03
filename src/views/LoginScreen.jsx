@@ -71,6 +71,7 @@ export function LoginScreen({ onLogin }) {
                 { email: "mdupont",   pwd: "1234",  nom: "Mario Dumont",   role: "Utilisateur",    color: "#6b7280" },
                 { email: "jmartin",   pwd: "1234",  nom: "Jean Martin",     role: "Approbateur",    color: "#0284c7" },
                 { email: "plefebvre", pwd: "1234",  nom: "Pierre Lefebvre", role: "Approbateur",    color: "#0284c7" },
+                { email: "nroy",      pwd: "1234",  nom: "Nathalie Roy",    role: "Approbateur +",  color: "#2563eb" },
                 { email: "sbernard",  pwd: "1234",  nom: "Sophie Bernard",  role: "Vérificateur",   color: "#7c3aed" },
                 { email: "ltremblay", pwd: "1234",  nom: "Luc Tremblay",   role: "Agent administratif",     color: "#ea580c" },
                 { email: "pgagnon",   pwd: "1234",  nom: "Paula Gagnon",   role: "Magasinier",     color: "#0891b2" },

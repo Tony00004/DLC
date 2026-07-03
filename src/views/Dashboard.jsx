@@ -12,7 +12,8 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
   const myRequests = requests.filter((r) => r.authorId === user.id);
   const pendingA  = requests.filter(r => r.status === "soumise" && ["achat","activite"].includes(r.type) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
-  const pendingB  = requests.filter(r => r.status === "acceptee" && user.roles.includes("B"));
+  const pendingA2 = requests.filter(r => r.status === "acceptee" && r.type === "achat" && user.roles.includes("A2"));
+  const pendingB  = requests.filter(r => (r.status === "acceptee" || (r.status === "acceptee2" && r.type === "achat")) && user.roles.includes("B"));
   const pendingC1 = requests.filter(r => ["validee","commandee","partiellement_traitee"].includes(r.status) && ["achat","activite"].includes(r.type) && user.roles.includes("C1"));
   const pendingC2 = requests.filter(r => ((["validee","commandee","partiellement_traitee"].includes(r.status) && r.type === "achat") || (r.status === "validee_C2" && r.type === "requisition")) && user.roles.includes("C2"));
   const pendingC3 = requests.filter(r => r.status === "validee_C3" && r.type === "requisition" && user.roles.includes("C3"));
@@ -29,7 +30,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
         {[
           { label: "Mes demandes soumises",                  value: statusCount("soumise"),  color: "#6b7280", icon: "📝" },
-          { label: "Mes demandes en cours d'approbation",    value: statusCount("acceptee"), color: "#0284c7", icon: "👍" },
+          { label: "Mes demandes en cours d'approbation",    value: statusCount("acceptee") + statusCount("acceptee2"), color: "#0284c7", icon: "👍" },
           { label: "Mes demandes en cours de vérification",  value: statusCount("validee"),  color: "#7c3aed", icon: "✅" },
           { label: "Mes demandes en cours de traitement",    value: statusCount("validee"), color: "#ea580c", icon: "🔧" },
           { label: "Mes demandes complétées",                value: statusCount("traitee"), color: COLORS.vert, icon: "🏁" },
@@ -316,12 +317,13 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
       )}
 
       {/* Role actions — toujours visible si au moins 1 rôle exécutant */}
-      {(user.roles.some(r => ["A","B","C1","C2","C3","D"].includes(r))) && (
+      {(user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r))) && (
         <div style={{ ...S.card, marginBottom: 24 }}>
           <h3 style={{ ...S.sectionTitle, marginBottom: 16 }}>Actions requises</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {[
               { role: "A",  label: "Approbateur",  count: pendingA.length,  color: "#0284c7", queue: "queue_A" },
+              { role: "A2", label: "Approbateur +", count: pendingA2.length, color: "#2563eb", queue: "queue_A2" },
               { role: "B",  label: "Vérificateur", count: pendingB.length,  color: "#7c3aed", queue: "queue_B" },
               { role: "C1", label: "Agent administratif",   count: pendingC1.length, color: "#ea580c", queue: "queue_C1" },
               { role: "C2", label: "Magasinier",   count: pendingC2.length, color: "#0891b2", queue: "queue_C2" },

@@ -2,7 +2,7 @@ import { getPrixTotal } from "./format";
 
 export function exportExcel(filtered, filename) {
   var STATUTS = {
-    soumise: "Soumise", acceptee: "Approuvée", validee: "Vérifiée",
+    soumise: "Soumise", acceptee: "Approuvée", acceptee2: "Approuvée (Approbateur +)", validee: "Vérifiée",
     commandee: "En commande", partiellement_traitee: "Partiellement complétée", traitee: "Traitée / Complétée",
     refusee: "Refusée", annulee: "Annulée",
   };

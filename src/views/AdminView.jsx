@@ -5,6 +5,7 @@ import { S } from "../styles";
 export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
+  const [sortRole, setSortRole] = useState(null);
   const [newServiceType, setNewServiceType] = useState("");
   const [newNiveau,      setNewNiveau]      = useState("");
   const [newMatiere,     setNewMatiere]     = useState("");
@@ -86,6 +87,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
               {[
                 { role: "A",  label: "Approbateur",    desc: "Approuve les demandes d'achat et d'activité",   color: "#0284c7" },
+                { role: "A2", label: "Approbateur +",  desc: "Autorise les demandes d'achat de matériel avant le vérificateur", color: "#2563eb" },
                 { role: "B",  label: "Vérificateur",   desc: "Vérifie toutes les demandes approuvées",        color: "#7c3aed" },
                 { role: "C1", label: "Agent administratif",     desc: "Traite les achats et activités vérifiés",       color: "#ea580c" },
                 { role: "C2", label: "Magasinier",     desc: "Reçoit et complète les commandes d'achat",      color: "#0891b2" },
@@ -140,6 +142,9 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
             <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>
               Utilisateurs du système ({users.length})
             </h4>
+            <p style={{ fontSize: 12, color: COLORS.gris, marginTop: -6, marginBottom: 10 }}>
+              💡 Cliquez sur un rôle dans l'en-tête du tableau pour regrouper les utilisateurs qui le possèdent en tête de liste.
+            </p>
             <div style={{ overflowX: "auto", marginBottom: 18 }}>
               <table style={{ ...S.table, minWidth: 800 }}>
                 <thead>
@@ -148,14 +153,22 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                     <th style={S.th}>Courriel</th>
                     {[
                       { role: "A",  label: "Approbateur",    color: "#0284c7" },
+                      { role: "A2", label: "Approbateur +",  color: "#2563eb" },
                       { role: "B",  label: "Vérificateur",   color: "#7c3aed" },
                       { role: "C1", label: "Agent administratif",     color: "#ea580c" },
                       { role: "C2", label: "Magasinier",     color: "#0891b2" },
                       { role: "C3", label: "Concierge",      color: "#059669" },
                       { role: "D",  label: "Administrateur", color: "#dc2626" },
                     ].map(r => (
-                      <th key={r.role} style={{ ...S.th, textAlign: "center", color: r.color, minWidth: 80 }}>
-                        <div style={{ fontSize: 10, fontWeight: 900 }}>{r.role}</div>
+                      <th key={r.role}
+                        onClick={() => setSortRole(prev => prev === r.role ? null : r.role)}
+                        title={`Regrouper les utilisateurs « ${r.label} » en tête de liste`}
+                        style={{
+                          ...S.th, textAlign: "center", color: r.color, minWidth: 80, cursor: "pointer", userSelect: "none",
+                          background: sortRole === r.role ? r.color + "22" : S.th.background,
+                          boxShadow: sortRole === r.role ? `inset 0 -3px 0 ${r.color}` : undefined,
+                        }}>
+                        <div style={{ fontSize: 10, fontWeight: 900 }}>{r.role}{sortRole === r.role ? " ▾" : ""}</div>
                         <div style={{ fontSize: 10, fontWeight: 600 }}>{r.label}</div>
                       </th>
                     ))}
@@ -163,7 +176,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u, i) => {
+                  {(sortRole ? [...users].sort((a, b) => Number(b.roles.includes(sortRole)) - Number(a.roles.includes(sortRole))) : users).map((u, i) => {
                     const isAdminUser = u.roles.includes("D");
                     return (
                       <tr key={u.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
@@ -172,7 +185,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                           {isAdminUser && <span style={{ marginLeft: 6, fontSize: 10, background: "#dc262618", color: "#dc2626", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>ADMIN</span>}
                         </td>
                         <td style={{ ...S.td, fontSize: 12, color: COLORS.gris }}>{u.email}@csslaval.gouv.qc.ca</td>
-                        {["A", "B", "C1", "C2", "C3", "D"].map((role) => (
+                        {["A", "A2", "B", "C1", "C2", "C3", "D"].map((role) => (
                           <td key={role} style={{ ...S.td, textAlign: "center" }}>
                             <input type="checkbox" checked={u.roles.includes(role)} onChange={() => toggleRole(u.id, role)}
                               style={{ width: 16, height: 16, cursor: "pointer" }} />
@@ -223,6 +236,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               {[
                 { key: "soumise",               label: "Soumise",                color: "#64748b" },
                 { key: "acceptee",              label: "Approuvée",              color: "#0284c7" },
+                { key: "acceptee2",             label: "Approuvée (Approbateur +)", color: "#2563eb" },
                 { key: "validee",               label: "Vérifiée",               color: "#7c3aed" },
                 { key: "commandee",             label: "En commande",            color: "#ea580c" },
                 { key: "partiellement_traitee", label: "Partiellement complétée", color: "#f59e0b" },
