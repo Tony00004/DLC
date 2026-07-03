@@ -84,7 +84,9 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
 
   function actionButtons(r) {
     const advance = getAvailableAdvance(r.type, r.status, [role], workflowConfig, isAdmin);
-    const refusable = canRoleRefuse(r.type, role, workflowConfig) || isAdmin;
+    // Le refus reste gouverné par la configuration « Qui peut refuser » (onglet Parcours des
+    // demandes) même pour un compte administrateur agissant dans un rôle d'exécution (C1/C2/C3).
+    const refusable = canRoleRefuse(r.type, role, workflowConfig);
     // Une réquisition en fin de chaîne se termine par un choix d'attribution (Magasinier/Concierge)
     // qui nécessite d'ouvrir la fiche détail plutôt qu'une action rapide depuis la liste.
     const showAdvanceHere = advance && !(r.type === "requisition" && advance.isLast);

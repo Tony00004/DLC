@@ -38,7 +38,9 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   // Étape d'approbation que je peux faire progresser maintenant (rôle et libellé dynamiques).
   const advance = getAvailableAdvance(request.type, request.status, user.roles, workflowConfig, isAdmin);
   const isFinalApprovalStage = !!(advance && advance.isLast);
-  const refusableNow = !!advance && (canRoleRefuse(request.type, advance.stage.role, workflowConfig) || isAdmin);
+  // Le refus reste gouverné par la configuration « Qui peut refuser » (onglet Parcours des
+  // demandes) même pour un compte administrateur agissant dans un rôle d'exécution (C1/C2/C3).
+  const refusableNow = !!advance && canRoleRefuse(request.type, advance.stage.role, workflowConfig);
 
   // Agent administratif (C1) traite achat/activite une fois la chaîne d'approbation terminée
   const canSecretary = isPendingC1(request, workflowConfig) && (canActRole("C1") || isAdmin);
