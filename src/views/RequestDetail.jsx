@@ -42,6 +42,10 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   // demandes) même pour un compte administrateur agissant dans un rôle d'exécution (C1/C2/C3).
   const refusableNow = !!advance && canRoleRefuse(request.type, advance.stage.role, workflowConfig);
 
+  // Achat que le demandeur ou la demandeuse effectue lui-même/elle-même : pas de suivi
+  // commande/réception, l'agent administratif confirme simplement si l'achat a été fait.
+  const isSelfPurchase = request.type === "achat" && request.formData?.achatPersonnel === "Oui";
+
   // Agent administratif (C1) traite achat/activite une fois la chaîne d'approbation terminée
   const canSecretary = isPendingC1(request, workflowConfig) && (canActRole("C1") || isAdmin);
   // Magasinier (C2) — achat en traitement final, ou réquisition attribuée
@@ -175,10 +179,12 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                 {request.formData._rows && request.formData._rows.length > 0 && (() => {
                   const canManageItems = (canActRole("C1") || canActRole("C2") || isAdmin)
                     && [finalApprovalStatus, "commandee", "partiellement_traitee", "traitee"].includes(request.status);
-                  const canManageCommandeCol = (canActRole("C1") || isAdmin) && canManageItems;
+                  // Achat personnel (le demandeur achète lui-même) : pas de suivi commande/réception.
+                  const showOrderTracking = canManageItems && !isSelfPurchase;
+                  const canManageCommandeCol = (canActRole("C1") || isAdmin) && showOrderTracking;
                   const rows = request.formData._rows;
                   function toggleItem(idx, field) {
-                    if (!canManageItems) return;
+                    if (!showOrderTracking) return;
                     const updated = rows.map((r, i) => i === idx ? { ...r, [field]: !r[field] } : r);
                     if (onUpdateItems) onUpdateItems(request.id, updated);
                   }
@@ -186,7 +192,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     <div style={{ marginTop: 16 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                         <h4 style={{ margin: 0, fontSize: 15, color: COLORS.vertFonce, borderBottom: `1px solid ${COLORS.vertFonce}`, paddingBottom: 4 }}>Articles commandés</h4>
-                        {canManageItems && (
+                        {showOrderTracking && (
                           <div style={{ fontSize: 12, color: COLORS.gris, display: "flex", gap: 14 }}>
                             <span>📦 Commandés : <strong>{rows.filter(r=>r.commande).length}/{rows.length}</strong></span>
                             <span>📬 Reçus : <strong>{rows.filter(r=>r.recu).length}/{rows.length}</strong></span>
@@ -199,7 +205,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                             <tr>
                               {["#","Qté","Nom du produit","Description","N° produit","Lien Web","Prix unit.","Sous-total",
                                 ...(canManageCommandeCol ? ["✅ Commandé"] : []),
-                                ...(canManageItems ? ["📬 Reçu"] : [])
+                                ...(showOrderTracking ? ["📬 Reçu"] : [])
                               ].map((h) => (
                                 <th key={h} style={{ ...S.th, padding: "6px 8px", fontSize: 11,
                                   textAlign: h.startsWith("✅")||h.startsWith("📬") ? "center" : undefined,
@@ -228,7 +234,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                                       title="Cocher une fois commandé" />
                                   </td>
                                 )}
-                                {canManageItems && (
+                                {showOrderTracking && (
                                   <td style={{ ...S.td, textAlign: "center" }}>
                                     <input type="checkbox" checked={!!row.recu}
                                       onChange={() => toggleItem(idx, "recu")}
@@ -255,7 +261,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                                     style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#0284c7" }} />
                                 </td>
                               )}
-                              {canManageItems && (
+                              {showOrderTracking && (
                                 <td style={{ ...S.td, textAlign: "center" }}>
                                   <input type="checkbox"
                                     title="Tout cocher — Reçu"
@@ -271,9 +277,23 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                           </tfoot>
                         </table>
                       </div>
-                      {canManageItems && rows.every(r => r.recu) && rows.length > 0 && (
+                      {showOrderTracking && rows.every(r => r.recu) && rows.length > 0 && (
                         <div style={{ marginTop: 10, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, color: "#166534", fontSize: 13, fontWeight: 600 }}>
                           ✅ Tous les articles ont été reçus à l'école. Vous pouvez marquer la demande comme complétée.
+                        </div>
+                      )}
+                      {isSelfPurchase && canSecretary && (
+                        <div style={{ marginTop: 14, padding: "12px 16px", background: "#fff8e1", border: "1px solid #f59e0b", borderRadius: 8 }}>
+                          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#7a5800", fontWeight: 600 }}>
+                            📧 Avisez le demandeur ou la demandeuse par courriel de procéder à l'achat du matériel.
+                          </p>
+                          <p style={{ margin: "0 0 10px", fontSize: 13, color: COLORS.noir }}>
+                            L'achat a-t-il été effectué ?
+                          </p>
+                          <div style={{ display: "flex", gap: 10 }}>
+                            <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>Oui</button>
+                            <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment)}>Non</button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -534,7 +554,9 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               {/* ── Agent administratif (C1) — achat et activité ── */}
               {canSecretary && (
                 <>
-                  {request.type === "achat" && request.formData?._rows && (() => {
+                  {/* Achat personnel : la confirmation Oui/Non (affichée avec le tableau des articles)
+                      remplace les boutons de suivi commande/réception. */}
+                  {request.type === "achat" && !isSelfPurchase && request.formData?._rows && (() => {
                     const rows = request.formData._rows;
                     const tousRecus = rows.length > 0 && rows.every(r => r.recu);
                     const certainsRecus = rows.some(r => r.recu) && !tousRecus;
