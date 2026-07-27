@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(BASE_URL=\"https://dlc-any.pages.dev/\" npx playwright test --reporter=list)"
+    ]
+  }
+}
