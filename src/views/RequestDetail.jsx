@@ -89,12 +89,12 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   const btnVert2 = { background: "#23b090", color: "#fff", border: "1px solid #1a8a70", borderRadius: 6, padding: "10px 18px", fontSize: 14, cursor: "pointer", fontWeight: 700 };
 
   return (
-    <div style={S.content}>
-      <div style={{ display: "flex", gap: 10, marginBottom: 20 }} className="no-print">
+    <div style={S.content} className="s-content">
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }} className="no-print s-btn-row">
         <button style={{ ...S.btn }} onClick={onBack}>← Retour</button>
         <button style={{ background: "#04043C", color: "#fff", border: "1px solid #04043C", borderRadius: 6, padding: "10px 18px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => printZone()}>Imprimer</button>
       </div>
-      <div id="print-zone" style={S.card}>
+      <div id="print-zone" style={S.card} className="s-card">
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div>
             <h2 style={{ margin: "0 0 4px", fontSize: 22 }}>{request.title}</h2>
@@ -140,7 +140,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
             <h3 style={S.sectionTitle}>Détails de la demande {request.requestNumber ? <span style={{ fontSize: 14, fontWeight: 400, fontFamily: "monospace", color: COLORS.gris }}>({request.requestNumber})</span> : ""}</h3>
             {request.type === "achat" && (
               <div>
-                <div style={S.grid2}>
+                <div style={S.grid2} className="s-grid2">
                   {[
                     ["Demandeur / Demandeuse", request.formData.demandePar],
                     ["Courriel", request.formData.courriel ? request.formData.courriel + "@csslaval.gouv.qc.ca" : ""],
@@ -163,7 +163,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     <div style={{ fontSize: 14, padding: "6px 8px", background: "#f9fafb", borderRadius: 4, marginTop: 4 }}>{request.formData.natureActivite}</div>
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 22px", marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 22px", marginBottom: 12 }} className="s-grid2">
                   {[
                     ["Achat par moi-même", request.formData.achatPersonnel],
                     ["Conférencier / Conférencière", request.formData.conferencier],
@@ -199,7 +199,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                           </div>
                         )}
                       </div>
-                      <div style={{ overflowX: "auto" }}>
+                      <div style={{ overflowX: "auto" }} className="s-table-wrap">
                         <table style={{ ...S.table, fontSize: 12 }}>
                           <thead>
                             <tr>
@@ -311,7 +311,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               ) : null;
               return (
                 <div>
-                  <div style={S.grid2}>
+                  <div style={S.grid2} className="s-grid2">
                     <Champ label="Nom de l'activité" val={fd.nomActivite || fd["Nom de l'activité"]} />
                     <Champ label="Type d'activité" val={fd.typeActivite || fd["Type"]} />
                     <Champ label="Niveaux concernés" val={fd.niveauxConcernes?.join(", ") || fd["Niveaux"]} />
@@ -338,7 +338,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     </div>
                   )}
 
-                  <div style={{ ...S.grid2, marginTop: 12 }}>
+                  <div style={{ ...S.grid2, marginTop: 12 }} className="s-grid2">
                     <Champ label="Heure de départ" val={fd.heureDepart} />
                     <Champ label="Heure de retour" val={fd.heureRetour} />
                     <Champ label="Nom de l'établissement" val={fd.nomEtablissement} />
@@ -357,7 +357,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
             })()}
             {request.type === "requisition" && (
               <div>
-                <div style={S.grid2}>
+                <div style={S.grid2} className="s-grid2">
                   {["titre","typeService","typeServiceFinal","priorite","description","localConcerne","dateRealisation"].map(k => {
                     const v = request.formData[k];
                     if (!v || String(v).trim() === "") return null;
@@ -513,7 +513,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
             {!isTerminated && (
             <>
             {/* Commentaires : standard (tous) + administratif (rôles) */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }} className="s-grid2">
               <div>
                 <label style={S.label}>Commentaire (optionnel)</label>
                 <textarea style={S.textarea} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Ajouter un commentaire..." rows={3} />

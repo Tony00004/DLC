@@ -1,0 +1,57 @@
+/* Ajustements responsive — additifs uniquement, ne changent rien au-dessus de 720px.
+   Les styles de base restent en inline JS (src/styles.js) ; ces classes utilisent
+   !important pour prendre le dessus sous le seuil mobile. */
+
+@media (max-width: 720px) {
+  .s-topbar {
+    grid-template-columns: 1fr !important;
+    justify-items: center !important;
+    text-align: center !important;
+    padding: 10px 14px !important;
+    gap: 8px !important;
+  }
+  .s-topbar > * {
+    justify-content: center !important;
+  }
+  .s-topbar img,
+  .s-topbar svg {
+    max-width: 40px !important;
+    height: auto !important;
+  }
+
+  .s-content {
+    padding: 14px 12px !important;
+  }
+
+  .s-card {
+    padding: 16px 16px !important;
+  }
+
+  .s-grid2,
+  .s-grid3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .s-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .s-dash-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .s-dash-main {
+    grid-template-columns: 1fr !important;
+  }
+
+  .s-btn-row {
+    flex-wrap: wrap !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .s-dash-stats {
+    grid-template-columns: 1fr !important;
+  }
+}

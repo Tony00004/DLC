@@ -44,8 +44,8 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
 
   if (success) {
     return (
-      <div style={S.content}>
-        <div style={{ ...S.card, textAlign: "center", padding: "48px 32px" }}>
+      <div style={S.content} className="s-content">
+        <div style={{ ...S.card, textAlign: "center", padding: "48px 32px" }} className="s-card">
           <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
           <h2 style={{ margin: "0 0 8px" }}>Demande soumise avec succès!</h2>
           <p style={{ color: COLORS.gris, marginBottom: 24 }}>Votre demande de réquisition interne a été transmise et sera traitée sous peu.</p>
@@ -58,9 +58,9 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
   const types = serviceTypes && serviceTypes.length > 0 ? serviceTypes : ["Déplacement de mobilier", "Autres (précisez)"];
 
   return (
-    <div style={S.content}>
+    <div style={S.content} className="s-content">
       <button style={{ ...S.btn, marginBottom: 20 }} onClick={onBack}>← Retour</button>
-      <div id="print-zone" style={S.card}>
+      <div id="print-zone" style={S.card} className="s-card">
         <div style={{ background: COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
           <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>{editMode ? "Modifier la réquisition interne" : "Demande de réquisition interne"}</h2>
           <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}</p>
@@ -69,7 +69,7 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
         <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") e.preventDefault(); }}>
 
           {/* ── Ligne 1 : Titre / Type / Priorité ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr", gap: "12px 18px", marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr", gap: "12px 18px", marginBottom: 16 }} className="s-grid3">
             <F label="Titre de la demande" required>
               <input style={S.input} value={form.titre} onChange={(e) => setForm({ ...form, titre: e.target.value })}
                 placeholder="Ex: Déplacement de bureaux — salle 204" />
@@ -94,7 +94,7 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
           </div>
 
           {/* ── Infos demandeur ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 18px", marginBottom: 0 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 18px", marginBottom: 0 }} className="s-grid3">
             <F label="Demandeur / Demandeuse">
               <input style={{ ...S.input, background: "#f3f4f6" }} value={form.demandePar} readOnly />
             </F>
@@ -105,7 +105,7 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
               <input style={{ ...S.input, background: "#f3f4f6" }} value={form.dateDemande} readOnly />
             </F>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 18px", marginBottom: 16, marginTop: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 18px", marginBottom: 16, marginTop: 12 }} className="s-grid2">
             <F label="Date de réalisation souhaitée" required>
               <input type="date" style={{ ...S.input, borderColor: form.dateRealisation && form.dateRealisation < today ? COLORS.rouge : undefined }}
                 min={today}

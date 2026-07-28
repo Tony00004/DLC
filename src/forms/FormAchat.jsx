@@ -142,8 +142,8 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
   // ── Page de succès ──────────────────────────────────────────────────────────
   if (succes) {
     return (
-      <div style={S.content}>
-        <div style={{ ...S.card, textAlign: "center", padding: "48px 32px" }}>
+      <div style={S.content} className="s-content">
+        <div style={{ ...S.card, textAlign: "center", padding: "48px 32px" }} className="s-card">
           <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
           <h2 style={{ margin: "0 0 8px" }}>Demande soumise avec succès!</h2>
           <p style={{ color: COLORS.gris, marginBottom: 24 }}>
@@ -157,11 +157,11 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
 
   // ── Formulaire ──────────────────────────────────────────────────────────────
   return (
-    <div style={S.content}>
+    <div style={S.content} className="s-content">
       <button style={{ ...S.btn, marginBottom: 20 }} onClick={onBack}>← Retour</button>
 
       {/* Zone imprimable */}
-      <div id="print-zone" style={S.card}>
+      <div id="print-zone" style={S.card} className="s-card">
         <div style={{ background: editMode ? "#23b090" : COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
           <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>
             {editMode ? "Modifier la demande d'achat" : "Demande d'achat de matériel"}
@@ -174,7 +174,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
         <h3 style={S.sectionTitle}>Informations générales</h3>
 
         {/* ── Ligne 1 : Demandeur / Courriel / Date de la demande ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 18px", marginBottom: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 18px", marginBottom: 14 }} className="s-grid3">
           <F label="Demandeur / Demandeuse">
             <input style={{ ...S.input, background: "#f3f4f6", cursor: "not-allowed" }} value={user.name} readOnly />
           </F>
@@ -187,7 +187,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
         </div>
 
         {/* ── Ligne 2 : Titre de la demande / Date souhaitée ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 18px", marginBottom: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 18px", marginBottom: 14 }} className="s-grid2">
           <F label="Titre de la demande" required>
             <input style={S.input} placeholder="Ex : Matériel pour le projet de sciences" value={nature} onChange={e => setNature(e.target.value)} />
           </F>
@@ -199,7 +199,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
           </F>
         </div>
 
-        <div style={S.grid2}>
+        <div style={S.grid2} className="s-grid2">
           <F label="Matière" required>
             <select style={S.select} value={matiere} onChange={e => setMatiere(e.target.value)}>
               <option value="">Sélectionnez</option>
@@ -254,7 +254,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
 
 
         {/* Questions Oui/Non */}
-        <div style={{ ...S.grid2, marginTop: 16, gap: "12px 22px" }}>
+        <div style={{ ...S.grid2, marginTop: 16, gap: "12px 22px" }} className="s-grid2">
           {[
             { label: "Demande que j'irai acheter par moi-même", val: achatPersonnel, set: setAchatPersonnel,
               warning: "À noter que vous devez attendre la confirmation avant de procéder à l'achat du matériel. Si vous achetez le tout avant, il se peut qu'il soit impossible de procéder à votre remboursement." },
@@ -284,7 +284,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
 
         {/* Tableau articles */}
         <h3 style={{ ...S.sectionTitle, marginTop: 24 }}>Détails de la demande</h3>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto" }} className="s-table-wrap">
           <table style={S.table}>
             <thead>
               <tr>

@@ -85,9 +85,9 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   var nbRefusees = allVisible.filter(function(r) { return ["refusee","annulee"].includes(r.status); }).length;
 
   return (
-    <div style={S.content}>
+    <div style={S.content} className="s-content">
       <button style={{ ...S.btn, marginBottom: 20 }} onClick={() => setView("dashboard")}>← Retour</button>
-      <div style={S.card}>
+      <div style={S.card} className="s-card">
 
         {/* En-tête */}
         <div style={{ background: COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
@@ -102,7 +102,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
         </div>
 
         {/* Compteurs rapides */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }} className="s-dash-stats">
           {[
             { label: "Total", value: allVisible.length, color: COLORS.bleu },
             { label: "En cours", value: nbEnCours, color: "#0284c7" },
@@ -260,7 +260,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
             </button>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto" }} className="s-table-wrap">
             <table style={S.table}>
               <thead>
                 <tr>

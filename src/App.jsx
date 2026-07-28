@@ -323,7 +323,7 @@ export default function App() {
       <div style={{ ...S.page, display: "flex", flexDirection: "column" }}>
         <Topbar />
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ ...S.card, maxWidth: 480, padding: 28, textAlign: "center" }}>
+          <div style={{ ...S.card, maxWidth: 480, padding: 28, textAlign: "center" }} className="s-card">
             <h3 style={{ margin: "0 0 10px", color: COLORS.rouge }}>Connexion au serveur impossible</h3>
             <p style={{ fontSize: 13, color: COLORS.gris }}>{loadError}</p>
             <button style={{ ...S.btnPrimary, marginTop: 12 }} onClick={() => window.location.reload()}>Réessayer</button>

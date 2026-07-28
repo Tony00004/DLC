@@ -112,6 +112,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
       "Actions",
     ];
     return (
+      <div className="s-table-wrap">
       <table style={S.table}>
         <thead><tr>{headers.map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
         <tbody>
@@ -134,6 +135,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           })}
         </tbody>
       </table>
+      </div>
     );
   }
 
@@ -142,6 +144,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
       ? ["Nº", "Titre", "Demandeur", "Statut", "Approuvé CPE", "Approuvé CÉ", "Date action", ""]
       : ["Nº", "Titre", "Demandeur", "Statut", "Date action", ""];
     return (
+      <div className="s-table-wrap">
       <table style={S.table}>
         <thead><tr>{headers.map(h => <th key={h} style={S.th}>{h}</th>)}</tr></thead>
         <tbody>
@@ -165,6 +168,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           })}
         </tbody>
       </table>
+      </div>
     );
   }
 
@@ -225,8 +229,8 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   }
 
   return (
-    <div style={S.content}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+    <div style={S.content} className="s-content">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }} className="s-btn-row">
         <button style={S.btn} onClick={onBack}>← Retour</button>
         <div style={{ display: "flex", gap: 10 }}>
           {(role === "A" || role === "A2" || role === "B") && (
@@ -261,8 +265,8 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
 
       {isAgentQueue ? (
         <>
-          <div style={S.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={S.card} className="s-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Demandes d'activités et de sorties</h2>
               <button onClick={handlePrintActivites} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
                 🖨️ Imprimer
@@ -281,8 +285,8 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
             )}
           </div>
 
-          <div style={S.card}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={S.card} className="s-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Demandes d'achat de matériel</h2>
               <button onClick={handlePrintAchats} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
                 🖨️ Imprimer
@@ -310,7 +314,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           </div>
         </>
       ) : (
-        <div style={S.card}>
+        <div style={S.card} className="s-card">
           <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>
             File d'attente — {roleDisplay}
           </h2>
@@ -320,6 +324,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           {filtered.length === 0 ? (
             <p style={{ color: COLORS.gris }}>Aucune demande en attente.</p>
           ) : (
+            <div className="s-table-wrap">
             <table style={S.table}>
               <thead>
                 <tr>
@@ -346,6 +351,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                 ))}
               </tbody>
             </table>
+            </div>
           )}
 
           {/* ── Demandes traitées ── */}
@@ -358,6 +364,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                 <span style={{ background: "#e5e7eb", color: "#6b7280", borderRadius: 12, padding: "2px 8px", fontSize: 12, fontWeight: 900 }}>{traitees.length}</span>
               </button>
               {showTraitees && (
+                <div className="s-table-wrap">
                 <table style={S.table}>
                   <thead>
                     <tr>{["Nº","Type","Titre","Demandeur","Statut","Date action",""].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
@@ -382,6 +389,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                     })}
                   </tbody>
                 </table>
+                </div>
               )}
             </div>
           )}

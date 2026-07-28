@@ -129,8 +129,8 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
 
   if (success) {
     return (
-      <div style={S.content}>
-        <div style={{ ...S.card, textAlign: "center", padding: "48px 32px" }}>
+      <div style={S.content} className="s-content">
+        <div style={{ ...S.card, textAlign: "center", padding: "48px 32px" }} className="s-card">
           <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
           <h2 style={{ margin: "0 0 8px" }}>Demande soumise avec succès!</h2>
           <p style={{ color: COLORS.gris, marginBottom: 24 }}>Votre demande d'activité ou de sortie a été transmise.</p>
@@ -152,9 +152,9 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
   );
 
   return (
-    <div style={S.content}>
+    <div style={S.content} className="s-content">
       <button className="no-print" style={{ ...S.btn, marginBottom: 20 }} onClick={onBack}>← Retour</button>
-      <div id="print-zone" style={S.card}>
+      <div id="print-zone" style={S.card} className="s-card">
         <div style={{ background: editMode ? "#23b090" : COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
           <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>{editMode ? "Modifier la demande d'activité / sortie" : "Demande d'activités et de sorties"}</h2>
           <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}</p>
@@ -166,7 +166,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
           <h3 style={S.sectionTitle}>Informations du demandeur / demandeuse</h3>
 
           {/* Ligne 1 : Demandeur principal (auto) */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 18px", marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px 18px", marginBottom: 12 }} className="s-grid3">
             <F label="Demandeur / Demandeuse">
               <input style={{ ...S.input, background: "#f3f4f6", cursor: "not-allowed" }} value={user.name} readOnly />
             </F>
@@ -240,7 +240,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
 
           {/* ── Détails ── */}
           <h3 style={S.sectionTitle}>Détails de la demande</h3>
-          <div style={S.grid2}>
+          <div style={S.grid2} className="s-grid2">
             <div>
               <div style={{ marginBottom: 14 }}>
                 <label style={S.label}>Nom de l'activité ou de la sortie<span style={{ color: COLORS.rouge }}> *</span></label>
@@ -344,7 +344,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
               <input style={{ ...S.input, marginTop: 8, maxWidth: 420 }} placeholder="Précisez la matière" value={form.autreMatiere} onChange={(e) => setForm({ ...form, autreMatiere: e.target.value })} />
             )}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 22px", alignItems: "start", marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 22px", alignItems: "start", marginBottom: 16 }} className="s-grid2">
             <div>
               <label style={S.label}>Direction responsable{dirAutoAssigned && <span style={{ color: "#0284c7", fontSize: 11, fontWeight: 400, marginLeft: 4 }}>(auto-assignée)</span>}<span style={{ color: COLORS.rouge }}> *</span></label>
               {dirAutoAssigned ? (
@@ -413,7 +413,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
           {form.typeActivite === "Sortie" && (
             <>
               <h3 style={{ ...S.sectionTitle, marginTop: 24 }}>Transport (sortie seulement)</h3>
-              <div style={S.grid2}>
+              <div style={S.grid2} className="s-grid2">
                 <div>
                   <label style={S.label}>Type de transport<span style={{ color: COLORS.rouge }}> *</span></label>
                   <select style={S.select} value={form.typeTransport} onChange={(e) => setForm({ ...form, typeTransport: e.target.value })} required>
@@ -469,7 +469,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
 
           {/* ── Coûts ── */}
           <h3 style={{ ...S.sectionTitle, marginTop: 24 }}>Coûts</h3>
-          <div style={{ overflowX: "auto" }}>
+          <div style={{ overflowX: "auto" }} className="s-table-wrap">
             <table style={{ ...S.table, fontSize: 13 }}>
               <thead>
                 <tr>

@@ -24,11 +24,11 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
   }
 
   return (
-    <div style={S.content}>
+    <div style={S.content} className="s-content">
       <h2 style={{ margin: "0 0 20px", fontSize: 22, fontWeight: 700 }}>Tableau de bord</h2>
 
       {/* Stats row — 5 catégories */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 24 }} className="s-dash-stats">
         {[
           { label: "Mes demandes soumises",                  value: statusCount("soumise"),  color: "#6b7280", icon: "📝" },
           { label: "Mes demandes en cours d'approbation",    value: statusCount("acceptee") + statusCount("acceptee2"), color: "#0284c7", icon: "👍" },
@@ -45,8 +45,8 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
       </div>
 
       {/* Nouvelle demande (colonne gauche) + Calendrier (colonne droite) */}
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 24, marginBottom: 24, alignItems: "start" }}>
-        <div style={{ ...S.card, marginBottom: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 24, marginBottom: 24, alignItems: "start" }} className="s-dash-main">
+        <div style={{ ...S.card, marginBottom: 0 }} className="s-card">
           <h3 style={S.sectionTitle}>Nouvelle demande</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {Object.entries(REQUEST_TYPES).map(([key, label]) => {
@@ -65,7 +65,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
           </div>
         </div>
 
-        <div style={{ ...S.card, marginBottom: 0, padding: "18px 20px" }}>
+        <div style={{ ...S.card, marginBottom: 0, padding: "18px 20px" }} className="s-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h3 style={{ ...S.sectionTitle, margin: 0, paddingBottom: 6 }}>Calendrier</h3>
             {canManageCalendar && (
@@ -188,7 +188,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
 
         return (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setSelectedDate(null)}>
-            <div style={{ ...S.card, maxWidth: 580, width: "90%", maxHeight: "80vh", overflowY: "auto", marginBottom: 0 }} onClick={e => e.stopPropagation()}>
+            <div style={{ ...S.card, maxWidth: 580, width: "90%", maxHeight: "80vh", overflowY: "auto", marginBottom: 0 }} className="s-card" onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, textTransform: "capitalize", fontSize: 15 }}>
                   Événements du {dateLabel}
@@ -259,7 +259,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
       {/* ── Modal ajout d'événement ── */}
       {showAddEvent && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setShowAddEvent(false)}>
-          <div style={{ ...S.card, maxWidth: 460, width: "90%", marginBottom: 0 }} onClick={e => e.stopPropagation()}>
+          <div style={{ ...S.card, maxWidth: 460, width: "90%", marginBottom: 0 }} className="s-card" onClick={e => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, fontSize: 15 }}>Nouvel événement</h3>
               <button style={{ ...S.btn, padding: "4px 10px" }} onClick={() => setShowAddEvent(false)}>✕</button>
@@ -273,7 +273,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
               <label style={S.label}>Date <span style={{ color: COLORS.rouge }}>*</span></label>
               <input type="date" style={S.input} value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
             </div>
-            <div style={{ ...S.grid2, marginBottom: 12 }}>
+            <div style={{ ...S.grid2, marginBottom: 12 }} className="s-grid2">
               <div>
                 <label style={S.label}>Heure de début</label>
                 <input type="time" style={S.input} value={newEvent.heureDebut} onChange={e => setNewEvent(p => ({ ...p, heureDebut: e.target.value }))} />
@@ -319,7 +319,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
 
       {/* Role actions — toujours visible si au moins 1 rôle exécutant */}
       {(user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r))) && (
-        <div style={{ ...S.card, marginBottom: 24 }}>
+        <div style={{ ...S.card, marginBottom: 24 }} className="s-card">
           <h3 style={{ ...S.sectionTitle, marginBottom: 16 }}>Actions requises</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {[
@@ -352,7 +352,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
 
       {/* Section "Demandes du système" pour le vérificateur (B) ou admin (D) */}
       {(user.roles.includes("B") || user.roles.includes("D")) && (
-        <div style={{ ...S.card, marginBottom: 20, background: "linear-gradient(135deg, #f0f8f4 0%, #e8f5ee 100%)", border: "1px solid #c3e6d4" }}>
+        <div style={{ ...S.card, marginBottom: 20, background: "linear-gradient(135deg, #f0f8f4 0%, #e8f5ee 100%)", border: "1px solid #c3e6d4" }} className="s-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div>
               <h3 style={{ ...S.sectionTitle, margin: "0 0 4px", color: COLORS.vertFonce }}>Demandes du système</h3>
@@ -369,7 +369,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
       )}
 
       {/* My requests list */}
-      <div style={S.card}>
+      <div style={S.card} className="s-card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
           <h3 style={{ ...S.sectionTitle, margin: 0 }}>Mes demandes récentes</h3>
           <button style={{ ...S.btn, fontSize: 13, padding: "6px 14px" }} onClick={() => setView("history")}>
@@ -379,6 +379,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
         {myRequests.length === 0 ? (
           <p style={{ color: COLORS.gris, fontSize: 14 }}>Aucune demande pour l'instant. Créez votre première demande ci-dessus.</p>
         ) : (
+          <div className="s-table-wrap">
           <table style={S.table}>
             <thead>
               <tr>
@@ -412,6 +413,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

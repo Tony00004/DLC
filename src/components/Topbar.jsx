@@ -4,7 +4,7 @@ import { EcoleLogo } from "./EcoleLogo";
 
 export function Topbar({ user, onLogout, setView, requests }) {
   return (
-    <div style={S.topbar}>
+    <div style={S.topbar} className="s-topbar">
       <div style={S.topbarLeft}>
         <DLCLogo size={50} />
       </div>

@@ -57,7 +57,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
   );
 
   return (
-    <div style={S.content}>
+    <div style={S.content} className="s-content">
       <button style={{ ...S.btn, marginBottom: 16 }} onClick={onBack}>← Retour</button>
 
       {/* En-tête */}
@@ -86,7 +86,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
             {sectionTitle("Gestion des droits des utilisateurs", "Attribuez les rôles à chaque membre du personnel. Un utilisateur peut avoir plusieurs rôles simultanément.")}
 
             {/* Légende des rôles — 3 colonnes */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }} className="s-grid3">
               {[
                 { role: "A",  label: "Approbateur",    desc: "Approuve les demandes d'achat et d'activité",   color: "#0284c7" },
                 { role: "A2", label: "Approbateur +",  desc: "Autorise les demandes d'achat de matériel avant le vérificateur", color: "#2563eb" },
@@ -108,7 +108,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
 
             {/* ── Ajouter un utilisateur ── */}
             <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>➕ Ajouter un utilisateur</h4>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "end", marginBottom: 28, padding: "16px 18px", background: "#f6f7f9", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "end", marginBottom: 28, padding: "16px 18px", background: "#f6f7f9", borderRadius: 8, border: "1px solid #e5e7eb" }} className="s-grid2">
               <div>
                 <label style={S.label}>Nom complet <span style={{ color: COLORS.rouge }}>*</span></label>
                 <input id="new-user-name" style={S.input} placeholder="Ex : Julie Tremblay" onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
@@ -147,7 +147,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
             <p style={{ fontSize: 12, color: COLORS.gris, marginTop: -6, marginBottom: 10 }}>
               💡 Cliquez sur un rôle dans l'en-tête du tableau pour regrouper les utilisateurs qui le possèdent en tête de liste.
             </p>
-            <div style={{ overflowX: "auto", marginBottom: 18 }}>
+            <div style={{ overflowX: "auto", marginBottom: 18 }} className="s-table-wrap">
               <table style={{ ...S.table, minWidth: 800 }}>
                 <thead>
                   <tr>
@@ -251,7 +251,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 { key: "refusee",               label: "Refusée",                color: "#b42318" },
                 { key: "annulee",               label: "Annulée",                color: "#78350f" },
               ].map(({ key, label, color }) => (
-                <div key={key} style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, alignItems: "center", padding: "12px 16px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }}>
+                <div key={key} style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, alignItems: "center", padding: "12px 16px", background: "#f9fafb", borderRadius: 8, border: "1px solid #e5e7eb" }} className="s-grid2">
                   <span style={{ ...S.badge(color), fontSize: 13, textAlign: "center" }}>{label}</span>
                   <input
                     style={S.input}
