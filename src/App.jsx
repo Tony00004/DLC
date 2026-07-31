@@ -42,6 +42,13 @@ export default function App() {
     refusee:   "Demande refusée par la direction ou la gestionnaire administrative",
     annulee:   "Demande annulée par le demandeur ou la demandeuse",
   });
+  const [digestEmailConfig, setDigestEmailConfig] = useState({
+    enabledRoles: { A: true, A2: true, B: true, C1: true, C2: true, C3: true },
+    subjectTemplate:  "DLC — {{total}} demande(s) en attente · {{date}}",
+    greetingTemplate: "Bonjour {{nom}},",
+    introTemplate:    "Voici votre récapitulatif pour le {{date}}.",
+    footerTemplate:   "Ce courriel est généré automatiquement par le système DLC. Pour ne plus recevoir ces notifications, contactez votre administrateur.",
+  });
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [editContext, setEditContext] = useState(null); // { request, nextStatus, comment }
   const [requests, setRequests] = useState([]);
@@ -67,6 +74,7 @@ export default function App() {
         if (settingsData.serviceTypes)        setServiceTypes(settingsData.serviceTypes);
         if (settingsData.calendarEvents)      setCalendarEvents(settingsData.calendarEvents);
         if (settingsData.workflowConfig)      setWorkflowConfig(settingsData.workflowConfig);
+        if (settingsData.digestEmailConfig)   setDigestEmailConfig(settingsData.digestEmailConfig);
         setLoadError("");
       } catch (err) {
         setLoadError("Impossible de joindre le serveur DLC API (http://localhost:3001). Vérifiez qu'il est démarré, puis rechargez la page. Détail : " + err.message);
@@ -306,6 +314,7 @@ export default function App() {
   const updateNiveauxList       = persistSetting("niveauxList", setNiveauxList);
   const updateMatieresList      = persistSetting("matieresList", setMatieresList);
   const updateWorkflowConfig    = persistSetting("workflowConfig", setWorkflowConfig);
+  const updateDigestEmailConfig = persistSetting("digestEmailConfig", setDigestEmailConfig);
 
   if (loading) {
     return (
@@ -424,7 +433,7 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} workflowConfig={workflowConfig} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} digestEmailConfig={digestEmailConfig} onUpdateDigestEmailConfig={updateDigestEmailConfig} />;
     }
     return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
   }

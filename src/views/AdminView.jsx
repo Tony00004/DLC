@@ -3,7 +3,7 @@ import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, digestEmailConfig, onUpdateDigestEmailConfig }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -36,7 +36,27 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
     { id: "achat",         label: "Formulaire — Achat matériel",    icon: "🛒" },
     { id: "activite",      label: "Formulaire — Activités/Sorties", icon: "🎒" },
     { id: "requisition",   label: "Formulaire — Réquisition interne", icon: "🔧" },
+    { id: "digest",        label: "Courriel récapitulatif",         icon: "📧" },
   ];
+
+  const DIGEST_ROLES = [
+    { role: "A",  label: "Approbateur",         color: "#0284c7" },
+    { role: "A2", label: "Approbateur +",       color: "#2563eb" },
+    { role: "B",  label: "Vérificateur",        color: "#7c3aed" },
+    { role: "C1", label: "Agent administratif", color: "#ea580c" },
+    { role: "C2", label: "Magasinier",          color: "#0891b2" },
+    { role: "C3", label: "Concierge",           color: "#16a34a" },
+  ];
+  const digestEnabledRoles = digestEmailConfig?.enabledRoles || {};
+  function toggleDigestRole(role) {
+    onUpdateDigestEmailConfig(prev => ({
+      ...prev,
+      enabledRoles: { ...prev.enabledRoles, [role]: !(prev.enabledRoles ? prev.enabledRoles[role] : true) },
+    }));
+  }
+  function updateDigestTemplate(field, value) {
+    onUpdateDigestEmailConfig(prev => ({ ...prev, [field]: value }));
+  }
 
   const tabBtn = (id) => ({
     padding: "10px 18px", fontSize: 13, borderRadius: "8px 8px 0 0", cursor: "pointer",
@@ -590,6 +610,61 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
             </div>
             <p style={{ fontSize: 12, color: COLORS.gris }}>
               ℹ️ "Autres (précisez)" est protégé et ne peut pas être retiré.
+            </p>
+          </div>
+        )}
+
+        {/* ── Onglet : Courriel récapitulatif ── */}
+        {activeTab === "digest" && (
+          <div>
+            {sectionTitle(
+              "Courriel récapitulatif quotidien",
+              "Chaque jour ouvrable (lundi à vendredi) à 7h30, un courriel est envoyé aux personnes ayant au moins une demande nécessitant leur attention. Aucun courriel n'est envoyé si le nombre est de 0."
+            )}
+
+            <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Rôles notifiés</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
+              {DIGEST_ROLES.map(({ role, label, color }) => {
+                const isActive = digestEnabledRoles[role] !== false;
+                return (
+                  <div key={role} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 16px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb" }}>
+                    <span style={{ ...S.badge(color), minWidth: 32, textAlign: "center" }}>{role}</span>
+                    <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: isActive ? color : "#9ca3af" }}>{label}</div>
+                    <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }} onClick={() => toggleDigestRole(role)}>
+                      <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
+                      <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? color : "#9ca3af", minWidth: 46, textAlign: "right" }}>{isActive ? "Actif" : "Inactif"}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Contenu du courriel</h4>
+            <p style={{ color: COLORS.gris, fontSize: 12, marginBottom: 14 }}>
+              Jetons disponibles : <code>{"{{nom}}"}</code> (destinataire), <code>{"{{total}}"}</code> (nombre de demandes), <code>{"{{date}}"}</code>. La mise en page visuelle (logo, couleurs, bouton vers l'application) reste fixe.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={S.label}>Objet du courriel</label>
+                <input style={S.input} value={digestEmailConfig?.subjectTemplate || ""} onChange={e => updateDigestTemplate("subjectTemplate", e.target.value)} />
+              </div>
+              <div>
+                <label style={S.label}>Message d'accueil</label>
+                <input style={S.input} value={digestEmailConfig?.greetingTemplate || ""} onChange={e => updateDigestTemplate("greetingTemplate", e.target.value)} />
+              </div>
+              <div>
+                <label style={S.label}>Phrase d'introduction</label>
+                <input style={S.input} value={digestEmailConfig?.introTemplate || ""} onChange={e => updateDigestTemplate("introTemplate", e.target.value)} />
+              </div>
+              <div>
+                <label style={S.label}>Note de bas de page</label>
+                <textarea style={S.textarea} value={digestEmailConfig?.footerTemplate || ""} onChange={e => updateDigestTemplate("footerTemplate", e.target.value)} />
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 14 }}>
+              ℹ️ Les modifications sont appliquées au prochain envoi (7h30, jours ouvrables).
             </p>
           </div>
         )}
