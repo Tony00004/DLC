@@ -49,6 +49,7 @@ export default function App() {
     introTemplate:    "Voici votre récapitulatif pour le {{date}}.",
     footerTemplate:   "Ce courriel est généré automatiquement par le système DLC. Pour ne plus recevoir ces notifications, contactez votre administrateur.",
   });
+  const [showDemoAccounts, setShowDemoAccounts] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [editContext, setEditContext] = useState(null); // { request, nextStatus, comment }
   const [requests, setRequests] = useState([]);
@@ -75,6 +76,7 @@ export default function App() {
         if (settingsData.calendarEvents)      setCalendarEvents(settingsData.calendarEvents);
         if (settingsData.workflowConfig)      setWorkflowConfig(settingsData.workflowConfig);
         if (settingsData.digestEmailConfig)   setDigestEmailConfig(settingsData.digestEmailConfig);
+        if (settingsData.showDemoAccounts !== undefined) setShowDemoAccounts(settingsData.showDemoAccounts);
         setLoadError("");
       } catch (err) {
         setLoadError("Impossible de joindre le serveur DLC API (http://localhost:3001). Vérifiez qu'il est démarré, puis rechargez la page. Détail : " + err.message);
@@ -315,6 +317,7 @@ export default function App() {
   const updateMatieresList      = persistSetting("matieresList", setMatieresList);
   const updateWorkflowConfig    = persistSetting("workflowConfig", setWorkflowConfig);
   const updateDigestEmailConfig = persistSetting("digestEmailConfig", setDigestEmailConfig);
+  const updateShowDemoAccounts  = persistSetting("showDemoAccounts", setShowDemoAccounts);
 
   if (loading) {
     return (
@@ -342,7 +345,7 @@ export default function App() {
     );
   }
 
-  if (!user) return <LoginScreen onLogin={handleLogin} />;
+  if (!user) return <LoginScreen onLogin={handleLogin} showDemoAccounts={showDemoAccounts} />;
 
   function renderView() {
     if (view === "dashboard") {
@@ -433,7 +436,7 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} workflowConfig={workflowConfig} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} digestEmailConfig={digestEmailConfig} onUpdateDigestEmailConfig={updateDigestEmailConfig} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} digestEmailConfig={digestEmailConfig} onUpdateDigestEmailConfig={updateDigestEmailConfig} showDemoAccounts={showDemoAccounts} onUpdateShowDemoAccounts={updateShowDemoAccounts} />;
     }
     return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
   }

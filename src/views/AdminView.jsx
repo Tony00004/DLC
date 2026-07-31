@@ -3,7 +3,7 @@ import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, digestEmailConfig, onUpdateDigestEmailConfig }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, digestEmailConfig, onUpdateDigestEmailConfig, showDemoAccounts = true, onUpdateShowDemoAccounts }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -104,6 +104,25 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
         {activeTab === "droits" && (
           <div>
             {sectionTitle("Gestion des droits des utilisateurs", "Attribuez les rôles à chaque membre du personnel. Un utilisateur peut avoir plusieurs rôles simultanément.")}
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${showDemoAccounts ? "#f59e0b55" : "#e5e7eb"}`, background: showDemoAccounts ? "#fffbeb" : "#f9fafb", marginBottom: 24 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: showDemoAccounts ? "#b45309" : "#9ca3af" }}>
+                  {showDemoAccounts ? "⚠️ Comptes de démonstration visibles" : "✓ Comptes de démonstration masqués"}
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>
+                  {showDemoAccounts
+                    ? "La liste des comptes de test (identifiant + mot de passe) est affichée sur la page de connexion — visible par n'importe qui."
+                    : "La page de connexion n'affiche plus la liste des comptes de test."}
+                </div>
+              </div>
+              <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                onClick={() => onUpdateShowDemoAccounts(!showDemoAccounts)}>
+                <div style={{ width: 44, height: 24, borderRadius: 12, background: showDemoAccounts ? "#f59e0b" : "#d1d5db", transition: "background 0.2s" }} />
+                <div style={{ position: "absolute", top: 3, left: showDemoAccounts ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: showDemoAccounts ? "#b45309" : "#9ca3af", minWidth: 60, textAlign: "right" }}>{showDemoAccounts ? "Visibles" : "Masqués"}</span>
+            </div>
 
             {/* Légende des rôles — 3 colonnes */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }} className="s-grid3">

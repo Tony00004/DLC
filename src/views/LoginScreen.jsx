@@ -5,7 +5,7 @@ import { DLCLogo } from "../components/DLCLogo";
 import { Topbar } from "../components/Topbar";
 import { DemoBanner } from "../components/DemoBanner";
 
-export function LoginScreen({ onLogin }) {
+export function LoginScreen({ onLogin, showDemoAccounts = true }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -64,6 +64,7 @@ export function LoginScreen({ onLogin }) {
               {submitting ? "Connexion…" : "Connexion"}
             </button>
           </form>
+          {showDemoAccounts && (
           <div style={{ marginTop: 24, padding: "14px 16px", background: "#f6f7f9", borderRadius: 6, fontSize: 12, color: COLORS.gris }}>
             <strong style={{ color: COLORS.bleu, fontSize: 13 }}>Comptes démo</strong>
             <div style={{ marginTop: 10, display: "grid", gap: 6 }}>
@@ -92,6 +93,7 @@ export function LoginScreen({ onLogin }) {
             </div>
             <p style={{ margin: "8px 0 0", fontSize: 11, color: "#9ca3af", textAlign: "center" }}>Cliquez sur un compte pour le sélectionner</p>
           </div>
+          )}
           </div>{/* fin padding div */}
         </div>
       </div>
