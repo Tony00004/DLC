@@ -3,13 +3,14 @@ import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, digestEmailConfig, onUpdateDigestEmailConfig, showDemoAccounts = true, onUpdateShowDemoAccounts }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, digestEmailConfig, onUpdateDigestEmailConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
   const [newServiceType, setNewServiceType] = useState("");
   const [newNiveau,      setNewNiveau]      = useState("");
   const [newMatiere,     setNewMatiere]     = useState("");
+  const [newFournisseur, setNewFournisseur] = useState("");
   const [savedMsg, setSavedMsg] = useState("");
 
   function toggleRole(userId, role) {
@@ -488,6 +489,47 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                     ℹ️ Ces listes s'appliquent aux deux formulaires : Achat de matériel et Activités/Sorties.
                   </p>
                 </>
+              );
+            })()}
+
+            {/* Liste des fournisseurs — toujours conservée en ordre alphabétique */}
+            {(() => {
+              const AUTRE_FOURNISSEUR = "Autre (précisez)";
+              const sortFournisseurs = (list) => {
+                const rest = list.filter(f => f !== AUTRE_FOURNISSEUR);
+                rest.sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+                return list.includes(AUTRE_FOURNISSEUR) ? [...rest, AUTRE_FOURNISSEUR] : rest;
+              };
+              return (
+                <div style={{ marginTop: 20 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Fournisseurs proposés (ruban « Fournisseur principal »)</h4>
+                  <p style={{ fontSize: 12, color: COLORS.gris, marginBottom: 10 }}>
+                    Cette liste est toujours affichée en ordre alphabétique — « {AUTRE_FOURNISSEUR} » reste protégé et demeure en dernier.
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                    {fournisseurList.filter(f => f !== AUTRE_FOURNISSEUR).map((f, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
+                        <span>{f}</span>
+                        <button type="button"
+                          style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
+                          onClick={() => onUpdateFournisseurList(sortFournisseurs(fournisseurList.filter(x => x !== f)))}
+                          title="Retirer">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input style={{ ...S.input, maxWidth: 280 }} placeholder="Nouveau fournisseur…" value={newFournisseur}
+                      onChange={e => setNewFournisseur(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                    <button type="button" style={S.btnPrimary} onClick={() => {
+                      const t = newFournisseur.trim();
+                      if (t && t !== AUTRE_FOURNISSEUR && !fournisseurList.includes(t)) {
+                        onUpdateFournisseurList(sortFournisseurs([...fournisseurList, t]));
+                        setNewFournisseur("");
+                      }
+                    }}>+ Ajouter</button>
+                  </div>
+                </div>
               );
             })()}
           </div>

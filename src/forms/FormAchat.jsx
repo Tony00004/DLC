@@ -5,7 +5,13 @@ import { resolveApprobateur } from "../utils/approbateur";
 import { printZone } from "../utils/print";
 import { F } from "../components/FormField";
 
-export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES }) {
+const DEFAULT_FOURNISSEURS = [
+  "Amazon (NON AUTORISÉ)", "Canadian Tire", "Costco", "Dollarama", "IGA", "Intermarché",
+  "Jean-Coutu", "Magi-Prix", "Maxi", "Métro", "Michaels", "Mieux enseigner", "Pharmaprix",
+  "Rona", "Super C", "Walmart", "Autre (précisez)",
+];
+
+export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
 
@@ -21,6 +27,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
   const [direction,     setDirection]     = useState(fd.directionResponsable || "");
   const [dirAutoAssigned, setDirAutoAssigned] = useState(false);
   const [fournisseur,   setFournisseur]   = useState(fd.fournisseurPrincipal || "");
+  const [autreFournisseur, setAutreFournisseur] = useState(fd.autreFournisseur || "");
   const [nature,        setNature]        = useState(fd.natureActivite || "");
   const [achatPersonnel,setAchatPersonnel]= useState(fd.achatPersonnel || "");
   const [conferencier,  setConferencier]  = useState(fd.conferencier || "");
@@ -119,7 +126,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
       dateSouhaitee, matiere, matiereArts, autreArt, autreMatiere,
       niveau, autreNiveau,
       directionResponsable: direction,
-      fournisseurPrincipal: fournisseur,
+      fournisseurPrincipal: fournisseur, autreFournisseur,
       natureActivite: nature,
       achatPersonnel, conferencier, parascolaire, budgetPassion,
       total: total.toFixed(2) + " $",
@@ -247,7 +254,24 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
             )}
           </F>
           <F label="Fournisseur principal">
-            <input style={S.input} value={fournisseur} onChange={e => setFournisseur(e.target.value)} />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {fournisseurList.map(f => {
+                const active = fournisseur === f;
+                const isForbidden = f.includes("NON AUTORISÉ");
+                const color = isForbidden ? COLORS.rouge : COLORS.vert;
+                return (
+                  <span key={f} onClick={() => setFournisseur(f)} style={{
+                    display: "inline-block", padding: "6px 14px", borderRadius: 16, fontSize: 13, cursor: "pointer",
+                    fontWeight: active ? 700 : 400, border: `1px solid ${active ? color : "#c8d0d8"}`,
+                    background: active ? color + "18" : "#f6f7f9", color: active ? color : COLORS.noir,
+                    userSelect: "none",
+                  }}>{f}</span>
+                );
+              })}
+            </div>
+            {fournisseur === "Autre (précisez)" && (
+              <input style={{ ...S.input, marginTop: 8 }} placeholder="Précisez le fournisseur" value={autreFournisseur} onChange={e => setAutreFournisseur(e.target.value)} />
+            )}
           </F>
         </div>
 
@@ -368,7 +392,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
             style={{ background: "#23b090", color: "#fff", border: "1px solid #1a8a70", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }}
             onClick={() => {
               setDateSouhaitee(""); setMatiere(""); setMatiereArts(""); setAutreArt(""); setAutreMatiere("");
-              setNiveau(""); setAutreNiveau(""); setDirection(""); setFournisseur(""); setNature("");
+              setNiveau(""); setAutreNiveau(""); setDirection(""); setFournisseur(""); setAutreFournisseur(""); setNature("");
               setAchatPersonnel(""); setConferencier(""); setParascolaire(""); setBudgetPassion("");
               setRows([{ id: Date.now(), qty: "", nom: "", description: "", numero: "", lien: "", prixUnitaire: "", soustotal: "", sansTaxe: false }]);
               setErreur("");

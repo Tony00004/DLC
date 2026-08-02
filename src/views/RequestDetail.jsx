@@ -149,7 +149,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     ["Matière", request.formData.matiere + (request.formData.autreMatiere ? " — " + request.formData.autreMatiere : "") + (request.formData.matiereArts ? " (" + request.formData.matiereArts + ")" : "")],
                     ["Niveau", request.formData.niveau + (request.formData.autreNiveau ? " — " + request.formData.autreNiveau : "")],
                     ["Direction responsable", request.formData.directionResponsable],
-                    ["Fournisseur principal", request.formData.fournisseurPrincipal],
+                    ["Fournisseur principal", request.formData.fournisseurPrincipal + (request.formData.autreFournisseur ? " — " + request.formData.autreFournisseur : "")],
                   ].map(([label, val]) => val ? (
                     <div key={label} style={{ marginBottom: 8 }}>
                       <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
