@@ -636,24 +636,22 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
 
             <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Types de service disponibles</h4>
             <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 14 }}>
-              Ces types apparaissent dans le menu déroulant du formulaire. "Autres (précisez)" est toujours conservé en dernier.
+              Ces types apparaissent dans le menu déroulant du formulaire. Lorsqu'activée, l'option "Autres (précisez)" est toujours conservée en dernier.
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {serviceTypes.map((st, i) => (
+              {serviceTypes.filter(st => st !== "Autres (précisez)").map((st, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
                   <span>{st}</span>
-                  {st !== "Autres (précisez)" && (
-                    <button type="button"
-                      style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
-                      onClick={() => onUpdateServiceTypes(serviceTypes.filter((_, j) => j !== i))}
-                      title="Retirer ce type">✕</button>
-                  )}
+                  <button type="button"
+                    style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
+                    onClick={() => onUpdateServiceTypes(serviceTypes.filter(s => s !== st))}
+                    title="Retirer ce type">✕</button>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 16 }}>
               <input
                 style={{ ...S.input, maxWidth: 320 }}
                 placeholder="Nouveau type de service…"
@@ -663,15 +661,29 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               />
               <button type="button" style={S.btnPrimary} onClick={() => {
                 const t = newServiceType.trim();
-                if (t && !serviceTypes.includes(t)) {
-                  onUpdateServiceTypes([...serviceTypes.filter(s => s !== "Autres (précisez)"), t, "Autres (précisez)"]);
+                if (t && t !== "Autres (précisez)" && !serviceTypes.includes(t)) {
+                  const hasAutres = serviceTypes.includes("Autres (précisez)");
+                  const rest = serviceTypes.filter(s => s !== "Autres (précisez)");
+                  onUpdateServiceTypes(hasAutres ? [...rest, t, "Autres (précisez)"] : [...rest, t]);
                   setNewServiceType("");
                 }
               }}>+ Ajouter</button>
             </div>
-            <p style={{ fontSize: 12, color: COLORS.gris }}>
-              ℹ️ "Autres (précisez)" est protégé et ne peut pas être retiré.
-            </p>
+
+            {(() => {
+              const hasAutres = serviceTypes.includes("Autres (précisez)");
+              return (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: hasAutres ? "#f0fdf4" : "#f9fafb", borderRadius: 8, border: `1px solid ${hasAutres ? "#86efac" : "#e5e7eb"}` }}>
+                  <span style={{ fontSize: 13, flex: 1 }}>Option <strong>« Autres (précisez) » avec champ à compléter</strong></span>
+                  <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                    onClick={() => onUpdateServiceTypes(hasAutres ? serviceTypes.filter(s => s !== "Autres (précisez)") : [...serviceTypes, "Autres (précisez)"])}>
+                    <div style={{ width: 44, height: 24, borderRadius: 12, background: hasAutres ? COLORS.vert : "#d1d5db", transition: "background 0.2s" }} />
+                    <div style={{ position: "absolute", top: 3, left: hasAutres ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: hasAutres ? COLORS.vert : "#9ca3af", minWidth: 46 }}>{hasAutres ? "Actif" : "Inactif"}</span>
+                </div>
+              );
+            })()}
           </div>
         )}
 
