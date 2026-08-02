@@ -254,21 +254,10 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
             )}
           </F>
           <F label="Fournisseur principal">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {fournisseurList.map(f => {
-                const active = fournisseur === f;
-                const isForbidden = f.includes("NON AUTORISÉ");
-                const color = isForbidden ? COLORS.rouge : COLORS.vert;
-                return (
-                  <span key={f} onClick={() => setFournisseur(f)} style={{
-                    display: "inline-block", padding: "6px 14px", borderRadius: 16, fontSize: 13, cursor: "pointer",
-                    fontWeight: active ? 700 : 400, border: `1px solid ${active ? color : "#c8d0d8"}`,
-                    background: active ? color + "18" : "#f6f7f9", color: active ? color : COLORS.noir,
-                    userSelect: "none",
-                  }}>{f}</span>
-                );
-              })}
-            </div>
+            <select style={S.select} value={fournisseur} onChange={e => setFournisseur(e.target.value)}>
+              <option value="">Sélectionnez</option>
+              {fournisseurList.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
             {fournisseur === "Autre (précisez)" && (
               <input style={{ ...S.input, marginTop: 8 }} placeholder="Précisez le fournisseur" value={autreFournisseur} onChange={e => setAutreFournisseur(e.target.value)} />
             )}
