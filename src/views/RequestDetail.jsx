@@ -404,18 +404,25 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
           <div style={{ marginTop: 24, borderTop: "1px solid #e5e7eb", paddingTop: 20 }}>
             <h3 style={S.sectionTitle}>Historique</h3>
             <div style={{ marginBottom: 8 }}>
-              {request.history.map((h, i) => (
-                <div key={i} style={{ padding: "8px 12px", borderLeft: `3px solid ${getStatusMeta(request.type, h.status, workflowConfig).color}`, marginBottom: 8, background: "#f9fafb", borderRadius: "0 4px 4px 0" }}>
-                  <strong style={{ fontSize: 13 }}>{getStatusMeta(request.type, h.status, workflowConfig).label}</strong>
+              {request.history.map((h, i) => {
+                // Une simple modification (sans changement de statut) ne doit pas être affichée
+                // comme si le statut courant venait d'être décidé à nouveau (ex : "Approuvée").
+                const isEditOnly = h.comment && h.comment.startsWith("Demande modifiée par ");
+                const label = isEditOnly ? "Modifiée" : getStatusMeta(request.type, h.status, workflowConfig).label;
+                const color = isEditOnly ? COLORS.gris : getStatusMeta(request.type, h.status, workflowConfig).color;
+                return (
+                <div key={i} style={{ padding: "8px 12px", borderLeft: `3px solid ${color}`, marginBottom: 8, background: "#f9fafb", borderRadius: "0 4px 4px 0" }}>
+                  <strong style={{ fontSize: 13 }}>{label}</strong>
                   <span style={{ fontSize: 12, color: COLORS.gris, marginLeft: 8 }}>par {h.by} · {h.date}</span>
-                  {h.comment && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#333" }}>{h.comment}</p>}
+                  {h.comment && !isEditOnly && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#333" }}>{h.comment}</p>}
                   {h.adminComment && user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r)) && (
                     <div style={{ marginTop: 6, padding: "6px 10px", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 4, fontSize: 12, color: "#1e40af" }}>
                       <strong>Note administrative :</strong> {h.adminComment}
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
