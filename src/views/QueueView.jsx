@@ -2,6 +2,8 @@ import { useState } from "react";
 import { COLORS, REQUEST_TYPES } from "../constants";
 import { S } from "../styles";
 import { printHTML } from "../utils/print";
+import { writeExcelFile } from "../utils/excel";
+import { getPrixTotal } from "../utils/format";
 import { ROLE_LABELS, getAvailableAdvance, canRoleRefuse, getActionLabel, getStatusMeta, getFinalApprovalStatus } from "../utils/workflow";
 
 function authInfo(auth) {
@@ -280,18 +282,12 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                   r.requestNumber || r.id,
                   CATS[r.type] || r.type, r.title, r.authorName,
                   getStatusMeta(r.type, r.status, workflowConfig).label,
-                  (r.formData && r.formData.total) ? r.formData.total : (r.type === "requisition" ? "N/A" : "—"),
+                  getPrixTotal(r),
                   monAction ? getStatusMeta(r.type, monAction.status, workflowConfig).label : "En attente",
                   monAction ? monAction.date : "",
                 ];
               });
-              var esc = function(v) { var s = String(v == null ? "" : v); return (s.includes(";") || s.includes('"') || s.includes("\n")) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-              var csv = ["sep=;", headers.join(";")].concat(rows.map(function(r) { return r.map(esc).join(";"); })).join("\n");
-              var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
-              var url = URL.createObjectURL(blob);
-              var a = document.createElement("a"); a.href = url;
-              a.download = "DLC_" + roleDisplay + "_" + new Date().toISOString().slice(0,10) + ".csv";
-              document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+              writeExcelFile(headers, rows, "DLC_" + roleDisplay + "_" + new Date().toISOString().slice(0,10));
             }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: "#16a34a", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700 }}>
               Exporter vers Excel ({filtered.length + traitees.length})
             </button>

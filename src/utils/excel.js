@@ -1,45 +1,17 @@
 import { getPrixTotal } from "./format";
 
-export function exportExcel(filtered, filename) {
-  var STATUTS = {
-    soumise: "Soumise", acceptee: "Approuvée", acceptee2: "Approuvée (Approbateur +)", validee: "Vérifiée",
-    commandee: "En commande", partiellement_traitee: "Partiellement complétée", traitee: "Traitée / Complétée",
-    refusee: "Refusée", annulee: "Annulée",
-  };
-  var CATS = {
-    achat: "Demande d'achat de matériel",
-    activite: "Demande d'activité et de sortie",
-    requisition: "Demande de réquisition interne",
-  };
+function esc(val) {
+  return String(val === null || val === undefined ? "" : val)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
-  var headers = ["Numéro de la demande", "Catégorie", "Titre", "Demandeur", "Approbateur", "Statut", "Prix total"];
-  var rows = filtered.map(function(r) {
-    // Trouver le nom de l'approbateur dans l'historique
-    var approbateur = "";
-    if (r.history) {
-      var entreeApprobation = r.history.find(function(h) { return h.status === "acceptee"; });
-      if (entreeApprobation) approbateur = entreeApprobation.by;
-    }
-    return [
-      r.requestNumber || String(r.id),
-      CATS[r.type] || r.type,
-      r.title,
-      r.authorName,
-      approbateur,
-      STATUTS[r.status] || r.status,
-      getPrixTotal(r),
-    ];
-  });
-
-  // Générer un fichier HTML-Excel (format XLS) — 100% compatible accents
-  function esc(val) {
-    return String(val === null || val === undefined ? "" : val)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
+// Génère un fichier HTML-Excel (format XLS) — mise en forme soignée, accents
+// toujours corrects (contrairement à un CSV brut, dont l'encodage dépend des
+// réglages régionaux d'Excel à l'ouverture).
+export function writeExcelFile(headers, rows, filename) {
   var headerRow = headers.map(function(h) {
     return '<th style="background:#04043C;color:#fff;font-weight:bold;border:1px solid #ccc;padding:6px 10px;">' + esc(h) + '</th>';
   }).join("");
@@ -75,4 +47,38 @@ export function exportExcel(filtered, filename) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function exportExcel(filtered, filename) {
+  var STATUTS = {
+    soumise: "Soumise", acceptee: "Approuvée", acceptee2: "Approuvée (Approbateur +)", validee: "Vérifiée",
+    commandee: "En commande", partiellement_traitee: "Partiellement complétée", traitee: "Traitée / Complétée",
+    refusee: "Refusée", annulee: "Annulée",
+  };
+  var CATS = {
+    achat: "Demande d'achat de matériel",
+    activite: "Demande d'activité et de sortie",
+    requisition: "Demande de réquisition interne",
+  };
+
+  var headers = ["Numéro de la demande", "Catégorie", "Titre", "Demandeur", "Approbateur", "Statut", "Prix total"];
+  var rows = filtered.map(function(r) {
+    // Trouver le nom de l'approbateur dans l'historique
+    var approbateur = "";
+    if (r.history) {
+      var entreeApprobation = r.history.find(function(h) { return h.status === "acceptee"; });
+      if (entreeApprobation) approbateur = entreeApprobation.by;
+    }
+    return [
+      r.requestNumber || String(r.id),
+      CATS[r.type] || r.type,
+      r.title,
+      r.authorName,
+      approbateur,
+      STATUTS[r.status] || r.status,
+      getPrixTotal(r),
+    ];
+  });
+
+  writeExcelFile(headers, rows, filename);
 }

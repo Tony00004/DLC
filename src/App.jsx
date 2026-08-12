@@ -156,9 +156,10 @@ export default function App() {
     try {
       const updated = await api.actionRequest(reqId, { newStatus, comment, adminComment, by: actionUser.name, updatedRows });
       setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      // Ne change pas de vue : si l'action vient de la fiche détail, selectedRequest correspond déjà
+      // à reqId et se met à jour en place ; si elle vient d'un tableau (file d'attente), on reste sur
+      // ce tableau au lieu d'être redirigé vers la fiche détail d'une AUTRE demande précédemment consultée.
       if (selectedRequest?.id === reqId) setSelectedRequest(updated);
-      // Rester sur l'historique si on y est, sinon aller sur le détail
-      setView(prev => prev === "history" ? "history" : "detail");
     } catch (err) {
       alert("Erreur : " + err.message);
     }
