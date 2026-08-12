@@ -8,6 +8,8 @@ import {
   allowsMagasinier, allowsConcierge,
 } from "../utils/workflow";
 
+const FIELD_LABEL = { fontSize: 13, fontWeight: 700, color: COLORS.noir, marginBottom: 2 };
+
 export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onReactivate, workflowConfig }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
@@ -152,14 +154,14 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     ["Fournisseur principal", request.formData.fournisseurPrincipal + (request.formData.autreFournisseur ? " — " + request.formData.autreFournisseur : "")],
                   ].map(([label, val]) => val ? (
                     <div key={label} style={{ marginBottom: 8 }}>
-                      <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                      <div style={FIELD_LABEL}>{label}</div>
                       <div style={{ fontSize: 14, padding: "4px 0", borderBottom: "1px solid #f0f0f0" }}>{String(val)}</div>
                     </div>
                   ) : null)}
                 </div>
                 {request.formData.natureActivite && (
                   <div style={{ marginTop: 8, marginBottom: 12 }}>
-                    <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>Nature de la demande</div>
+                    <div style={FIELD_LABEL}>Nature de la demande</div>
                     <div style={{ fontSize: 14, padding: "6px 8px", background: "#f9fafb", borderRadius: 4, marginTop: 4 }}>{request.formData.natureActivite}</div>
                   </div>
                 )}
@@ -171,7 +173,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     ["Budget concentration (passion)", request.formData.budgetPassion],
                   ].map(([label, val]) => val ? (
                     <div key={label} style={{ marginBottom: 4 }}>
-                      <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                      <div style={FIELD_LABEL}>{label}</div>
                       <div style={{ fontSize: 14 }}>{String(val)}</div>
                     </div>
                   ) : null)}
@@ -305,7 +307,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               const fd = request.formData;
               const Champ = ({ label, val, fullWidth }) => val && String(val).trim() ? (
                 <div style={{ marginBottom: 8, gridColumn: fullWidth ? "1 / -1" : undefined }}>
-                  <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+                  <div style={FIELD_LABEL}>{label}</div>
                   <div style={{ fontSize: 14, padding: "2px 0", borderBottom: "1px solid #f0f0f0" }}>{String(val)}</div>
                 </div>
               ) : null;
@@ -364,7 +366,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     const labels = { titre:"Titre", typeService:"Type de service", typeServiceFinal:"Service", priorite:"Priorité", description:"Description", localConcerne:"Local concerné", dateRealisation:"Date de réalisation souhaitée" };
                     return (
                       <div key={k} style={{ marginBottom: 8, gridColumn: k === "description" ? "1 / -1" : undefined }}>
-                        <div style={{ fontSize: 11, color: COLORS.gris, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>{labels[k] || k}</div>
+                        <div style={FIELD_LABEL}>{labels[k] || k}</div>
                         <div style={{ fontSize: 14, padding: "4px 0", borderBottom: "1px solid #f0f0f0" }}>{String(v)}</div>
                       </div>
                     );
