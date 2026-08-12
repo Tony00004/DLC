@@ -31,6 +31,12 @@ function fmtTransport(fd) {
   return parts.join(" | ") || "—";
 }
 
+function getMontant(r) {
+  if (r.type === "achat") return (r.formData && r.formData.total) || "—";
+  if (r.type === "activite") return (r.formData && r.formData["Total estimé"]) || "—";
+  return "—"; // réquisition interne : pas de montant
+}
+
 function fmtAuthLong(auth) {
   const info = authInfo(auth);
   const parts = [info.label];
@@ -141,8 +147,8 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
 
   function renderCategoryTraiteesTable(list, withAuth) {
     const headers = withAuth
-      ? ["Nº", "Titre", "Demandeur", "Statut", "Approuvé CPE", "Approuvé CÉ", "Date action", ""]
-      : ["Nº", "Titre", "Demandeur", "Statut", "Date action", ""];
+      ? ["Nº", "Titre", "Demandeur", "Montant", "Statut", "Approuvé CPE", "Approuvé CÉ", "Date action", ""]
+      : ["Nº", "Titre", "Demandeur", "Montant", "Statut", "Date action", ""];
     return (
       <div className="s-table-wrap">
       <table style={S.table}>
@@ -158,6 +164,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                 <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{r.requestNumber || r.id}</td>
                 <td style={S.td}><strong>{r.title}</strong></td>
                 <td style={S.td}>{r.authorName}</td>
+                <td style={S.td}>{getMontant(r)}</td>
                 <td style={S.td}><span style={S.badge(st.color)}>{st.label}</span></td>
                 {withAuth && <td style={S.td}><span style={{ color: cpe.color, fontStyle: cpe.italic ? "italic" : "normal", fontSize: 13, fontWeight: cpe.italic ? 400 : 700 }}>{cpe.label}</span></td>}
                 {withAuth && <td style={S.td}><span style={{ color: ce.color, fontStyle: ce.italic ? "italic" : "normal", fontSize: 13, fontWeight: ce.italic ? 400 : 700 }}>{ce.label}</span></td>}
@@ -172,60 +179,89 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
     );
   }
 
+  function activiteRow(r) {
+    const fd = r.formData || {};
+    return [
+      r.requestNumber || r.id,
+      fd.nomActivite || r.title,
+      fd.typeActivite || "",
+      r.authorName,
+      (fd.responsables || []).map(x => x.nom).join(", "),
+      fd.dateDemande || "",
+      fmtDatesPrevues(fd.datesPrevues),
+      fd.description || "",
+      (fd.niveauxConcernes || []).join(", ") + (fd.autreNiveau ? ` (${fd.autreNiveau})` : ""),
+      (fd.matieresConcernees || []).join(", ") + (fd.autreMatiere ? ` (${fd.autreMatiere})` : ""),
+      fd.groupes || "",
+      fd.directionResponsable || "",
+      fd.passion === "Oui" ? "Oui — " + (fd.passionTypes || []).join(", ") + (fd.passionAutres ? ` (${fd.passionAutres})` : "") : "Non",
+      fd.obligatoire || "",
+      fmtTransport(fd),
+      `${fd.coutEleve || "0"} $ × ${fd.nbEleves || "0"}`,
+      `${fd.coutAdulte || "0"} $ × ${fd.nbAdultes || "0"}`,
+      `${fd.coutLiberation || "0"} $ × ${fd.nbPeriodes || "0"}`,
+      `${fd.coutTransport || "0"} $`,
+      `${fd.autreMontant || "0"} $`,
+      getMontant(r),
+      getStatusMeta(r.type, r.status, workflowConfig).label,
+      fmtAuthLong(fd.cpeAuth),
+      fmtAuthLong(fd.ceAuth),
+    ];
+  }
+
   function handlePrintActivites() {
     const activiteHeaders = ["Nº", "Titre", "Type", "Demandeur", "Responsable(s)", "Date demande", "Date(s)/heure(s) prévues", "Description", "Niveaux", "Matières", "Groupes", "Direction responsable", "Concentration (passion)", "Obligatoire", "Transport", "Coût élève", "Coût adulte", "Coût libération", "Coût transport", "Autres coûts", "Total", "Statut", "Approuvé CPE", "Approuvé CÉ"];
-    const activiteRows = activitesPendantes.map(r => {
-      const fd = r.formData || {};
-      return [
-        r.requestNumber || r.id,
-        fd.nomActivite || r.title,
-        fd.typeActivite || "",
-        r.authorName,
-        (fd.responsables || []).map(x => x.nom).join(", "),
-        fd.dateDemande || "",
-        fmtDatesPrevues(fd.datesPrevues),
-        fd.description || "",
-        (fd.niveauxConcernes || []).join(", ") + (fd.autreNiveau ? ` (${fd.autreNiveau})` : ""),
-        (fd.matieresConcernees || []).join(", ") + (fd.autreMatiere ? ` (${fd.autreMatiere})` : ""),
-        fd.groupes || "",
-        fd.directionResponsable || "",
-        fd.passion === "Oui" ? "Oui — " + (fd.passionTypes || []).join(", ") + (fd.passionAutres ? ` (${fd.passionAutres})` : "") : "Non",
-        fd.obligatoire || "",
-        fmtTransport(fd),
-        `${fd.coutEleve || "0"} $ × ${fd.nbEleves || "0"}`,
-        `${fd.coutAdulte || "0"} $ × ${fd.nbAdultes || "0"}`,
-        `${fd.coutLiberation || "0"} $ × ${fd.nbPeriodes || "0"}`,
-        `${fd.coutTransport || "0"} $`,
-        `${fd.autreMontant || "0"} $`,
-        fd["Total estimé"] || "",
-        getStatusMeta(r.type, r.status, workflowConfig).label,
-        fmtAuthLong(fd.cpeAuth),
-        fmtAuthLong(fd.ceAuth),
-      ];
-    });
 
     const html =
       `<h2>Demandes d'activités et de sorties — ${esc(roleDisplay)}</h2>` +
       `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>` +
-      buildTableHTML(activiteHeaders, activiteRows, `Demandes d'activités et de sorties (${activiteRows.length})`);
+      buildTableHTML(activiteHeaders, activitesPendantes.map(activiteRow), `Demandes en attente (${activitesPendantes.length})`) +
+      buildTableHTML(activiteHeaders, activitesTraitees.map(activiteRow), `Demandes traitées (${activitesTraitees.length})`);
 
     printHTML(html, { landscape: true, title: "Demandes d'activités et de sorties — " + roleDisplay });
   }
 
-  function handlePrintAchats() {
-    const achatHeaders = ["Nº", "Titre", "Demandeur", "Date", "Statut", "Prix total"];
-    const achatRows = achatsPendants.map(r => [
+  function achatRow(r) {
+    return [
       r.requestNumber || r.id, r.title, r.authorName, r.date,
       getStatusMeta(r.type, r.status, workflowConfig).label,
-      (r.formData && r.formData.total) ? r.formData.total : "—",
-    ]);
+      getMontant(r),
+    ];
+  }
+
+  function handlePrintAchats() {
+    const achatHeaders = ["Nº", "Titre", "Demandeur", "Date", "Statut", "Prix total"];
 
     const html =
       `<h2>Demandes d'achat de matériel — ${esc(roleDisplay)}</h2>` +
       `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>` +
-      buildTableHTML(achatHeaders, achatRows, `Demandes d'achat de matériel (${achatRows.length})`);
+      buildTableHTML(achatHeaders, achatsPendants.map(achatRow), `Demandes en attente (${achatsPendants.length})`) +
+      buildTableHTML(achatHeaders, achatsTraitees.map(achatRow), `Demandes traitées (${achatsTraitees.length})`);
 
     printHTML(html, { landscape: true, title: "Demandes d'achat de matériel — " + roleDisplay });
+  }
+
+  function genericRow(r, dateLabel) {
+    const monAction = [...(r.history || [])].reverse().find(h => h.by === user.name);
+    return [
+      r.requestNumber || r.id, REQUEST_TYPES[r.type], r.title, r.authorName,
+      dateLabel === "action" ? (monAction ? monAction.date : "") : r.date,
+      getMontant(r),
+      getStatusMeta(r.type, r.status, workflowConfig).label,
+    ];
+  }
+
+  function handlePrintGeneric() {
+    const headersPending  = ["Nº", "Type", "Titre", "Demandeur", "Date", "Montant", "Statut"];
+    const headersTraitees = ["Nº", "Type", "Titre", "Demandeur", "Date action", "Montant", "Statut"];
+
+    const html =
+      `<h2>File d'attente — ${esc(roleDisplay)}</h2>` +
+      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>` +
+      buildTableHTML(headersPending, filtered.map(r => genericRow(r, "pending")), `Demandes en attente (${filtered.length})`) +
+      buildTableHTML(headersTraitees, traitees.map(r => genericRow(r, "action")), `Demandes traitées (${traitees.length})`);
+
+    printHTML(html, { landscape: true, title: "File d'attente — " + roleDisplay });
   }
 
   return (
@@ -315,9 +351,14 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
         </>
       ) : (
         <div style={S.card} className="s-card">
-          <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>
-            File d'attente — {roleDisplay}
-          </h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
+            <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>
+              File d'attente — {roleDisplay}
+            </h2>
+            <button onClick={handlePrintGeneric} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              🖨️ Imprimer
+            </button>
+          </div>
           <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 20 }}>
             {filtered.length} demande(s) en attente
           </p>
@@ -367,7 +408,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                 <div className="s-table-wrap">
                 <table style={S.table}>
                   <thead>
-                    <tr>{["Nº","Type","Titre","Demandeur","Statut","Date action",""].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+                    <tr>{["Nº","Type","Titre","Demandeur","Montant","Statut","Date action",""].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {traitees.map((r, i) => {
@@ -379,6 +420,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                           <td style={S.td}><span style={{fontSize:12}}>{REQUEST_TYPES[r.type]}</span></td>
                           <td style={S.td}><strong>{r.title}</strong></td>
                           <td style={S.td}>{r.authorName}</td>
+                          <td style={S.td}>{getMontant(r)}</td>
                           <td style={S.td}><span style={S.badge(st.color)}>{st.label}</span></td>
                           <td style={S.td}>{monAction ? monAction.date : ""}</td>
                           <td style={S.td}>
