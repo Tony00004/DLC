@@ -561,30 +561,20 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   {request.type === "achat" && !isSelfPurchase && request.formData?._rows && (() => {
                     const rows = request.formData._rows;
                     const tousRecus = rows.length > 0 && rows.every(r => r.recu);
-                    const certainsRecus = rows.some(r => r.recu) && !tousRecus;
-                    const tousCommandes = rows.length > 0 && rows.every(r => r.commande);
-                    // Tant que tous les articles ne sont pas cochés "commandé", la demande ne peut
-                    // pas être marquée complétée : elle doit rester partiellement complétée (et sous
-                    // la responsabilité de l'agent administratif) pour que celui-ci puisse continuer
-                    // à cocher des articles et y laisser des commentaires.
-                    return (
-                      <>
-                        {certainsRecus && (
-                          <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
-                            Enregistrer réception partielle
-                          </button>
-                        )}
-                        {!certainsRecus && !tousCommandes && (
-                          <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
-                            Marquer comme partiellement complétée
-                          </button>
-                        )}
-                        {tousCommandes && (
-                          <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
-                            {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
-                          </button>
-                        )}
-                      </>
+                    // Cocher "commandé" ne suffit pas à compléter la demande : tant que tous les
+                    // articles ne sont pas cochés "reçu", elle doit rester partiellement complétée
+                    // (et sous la responsabilité de l'agent administratif) pour que celui-ci puisse
+                    // continuer à cocher des articles et y laisser des commentaires. Seule la
+                    // réception complète (par l'agent administratif ou le magasinier) permet de la
+                    // marquer comme traitée.
+                    return tousRecus ? (
+                      <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
+                        Confirmer réception complète et compléter
+                      </button>
+                    ) : (
+                      <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
+                        Marquer comme partiellement complétée
+                      </button>
                     );
                   })()}
                   {request.type === "activite" && (
@@ -599,18 +589,14 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               {canMagasinier && !canSecretary && (() => {
                 const rows = request.formData?._rows || [];
                 const tousRecus = rows.length > 0 && rows.every(r => r.recu);
-                const certainsRecus = rows.some(r => r.recu) && !tousRecus;
-                return (
-                  <>
-                    {certainsRecus && (
-                      <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
-                        Enregistrer réception partielle
-                      </button>
-                    )}
-                    <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
-                      {tousRecus ? "Confirmer réception complète et compléter" : "Marquer comme complétée"}
-                    </button>
-                  </>
+                return tousRecus ? (
+                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
+                    Confirmer réception complète et compléter
+                  </button>
+                ) : (
+                  <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
+                    Marquer comme partiellement complétée
+                  </button>
                 );
               })()}
 
