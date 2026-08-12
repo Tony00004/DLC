@@ -42,17 +42,27 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
 
   var [histTab, setHistTab] = useState("mes");
   var allVisible = histTab === "mes" ? mesDemandes : agis;
+
+  // Onglets par catégorie — pour ne jamais mélanger achat/activité/réquisition.
+  var CATEGORY_TABS = [
+    ["achat", "Achat de matériel"],
+    ["activite", "Activités et sorties"],
+    ["requisition", "Réquisition interne"],
+  ];
+  var [categoryTab, setCategoryTab] = useState("achat");
+  var categoryVisible = allVisible.filter(function(r) { return r.type === categoryTab; });
+
   var [deleteStep, setDeleteStep] = useState(0); // 0: caché, 1: avertissement, 2: saisie de confirmation
   var [deleteInput, setDeleteInput] = useState("");
 
-  // Années scolaires disponibles
+  // Années scolaires disponibles (dans la catégorie active)
   var yearsSet = {};
-  allVisible.forEach(function(r) { yearsSet[getSchoolYear(r.date)] = true; });
+  categoryVisible.forEach(function(r) { yearsSet[getSchoolYear(r.date)] = true; });
   var allYears = Object.keys(yearsSet).sort().reverse();
 
   // Année par défaut = celle avec le plus de demandes
   var yearCounts = {};
-  allVisible.forEach(function(r) {
+  categoryVisible.forEach(function(r) {
     var y = getSchoolYear(r.date);
     yearCounts[y] = (yearCounts[y] || 0) + 1;
   });
@@ -62,7 +72,6 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   }
 
   var [selectedYear, setSelectedYear] = useState(bestYear);
-  var [selectedType, setSelectedType] = useState("all");
   var [selectedStatus, setSelectedStatus] = useState("all");
   var [selectedAuthor, setSelectedAuthor] = useState("all");
   var [dateFrom, setDateFrom] = useState("");
@@ -70,13 +79,13 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   var [search, setSearch] = useState("");
 
   // Demandeurs distincts (pour le filtre « Demandeur »)
-  var allAuthors = Array.from(new Set(allVisible.map(function(r) { return r.authorName; }))).sort();
+  var allAuthors = Array.from(new Set(categoryVisible.map(function(r) { return r.authorName; }))).sort();
 
   function resetFilters() {
-    setSelectedYear(bestYear); setSelectedType("all"); setSelectedStatus("all");
+    setSelectedYear(bestYear); setSelectedStatus("all");
     setSelectedAuthor("all"); setDateFrom(""); setDateTo(""); setSearch("");
   }
-  var filtersActive = selectedYear !== bestYear || selectedType !== "all" || selectedStatus !== "all"
+  var filtersActive = selectedYear !== bestYear || selectedStatus !== "all"
     || selectedAuthor !== "all" || dateFrom !== "" || dateTo !== "" || search !== "";
 
   // Tri des colonnes du tableau
@@ -84,7 +93,6 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   var [sortDir, setSortDir] = useState("desc");
   var SORT_COLUMNS = [
     { key: "requestNumber", label: "Nº demande", defaultDir: "asc", get: function(r) { return r.requestNumber || String(r.id); } },
-    { key: "type",          label: "Catégorie",  defaultDir: "asc", get: function(r) { return REQUEST_TYPES[r.type] || r.type; } },
     { key: "title",         label: "Titre",      defaultDir: "asc", get: function(r) { return r.title; } },
     { key: "authorName",    label: "Demandeur",  defaultDir: "asc", get: function(r) { return r.authorName; } },
     { key: "date",          label: "Date",       defaultDir: "desc", get: function(r) { return r.date; } },
@@ -109,10 +117,9 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
 
   // Filtrer
   var t = search.toLowerCase();
-  var activeSortCol = SORT_COLUMNS.find(function(c) { return c.key === sortField; }) || SORT_COLUMNS[4];
-  var filtered = allVisible.filter(function(r) {
+  var activeSortCol = SORT_COLUMNS.find(function(c) { return c.key === sortField; }) || SORT_COLUMNS[3];
+  var filtered = categoryVisible.filter(function(r) {
     var yearOk = selectedYear === "all" || getSchoolYear(r.date) === selectedYear;
-    var typeOk = selectedType === "all" || r.type === selectedType;
     var statusOk = selectedStatus === "all" || r.status === selectedStatus;
     var authorOk = selectedAuthor === "all" || r.authorName === selectedAuthor;
     var dateFromOk = !dateFrom || r.date >= dateFrom;
@@ -121,7 +128,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
       (r.requestNumber || "").toLowerCase().includes(t) ||
       r.title.toLowerCase().includes(t) ||
       r.authorName.toLowerCase().includes(t);
-    return yearOk && typeOk && statusOk && authorOk && dateFromOk && dateToOk && searchOk;
+    return yearOk && statusOk && authorOk && dateFromOk && dateToOk && searchOk;
   }).sort(function(a, b) {
     var av = activeSortCol.get(a), bv = activeSortCol.get(b);
     var cmp = typeof av === "number" && typeof bv === "number"
@@ -130,10 +137,10 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
     return sortDir === "asc" ? cmp : -cmp;
   });
 
-  // Compteurs sur toutes les demandes visibles (pas juste le filtre)
-  var nbEnCours = allVisible.filter(function(r) { return !["traitee","refusee","annulee"].includes(r.status); }).length;
-  var nbTraitees = allVisible.filter(function(r) { return r.status === "traitee"; }).length;
-  var nbRefusees = allVisible.filter(function(r) { return ["refusee","annulee"].includes(r.status); }).length;
+  // Compteurs sur la catégorie active (pas juste le filtre)
+  var nbEnCours = categoryVisible.filter(function(r) { return !["traitee","refusee","annulee"].includes(r.status); }).length;
+  var nbTraitees = categoryVisible.filter(function(r) { return r.status === "traitee"; }).length;
+  var nbRefusees = categoryVisible.filter(function(r) { return ["refusee","annulee"].includes(r.status); }).length;
 
   return (
     <div style={S.content} className="s-content">
@@ -174,10 +181,31 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
           </div>
         )}
 
+        {/* Onglets par catégorie */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          {CATEGORY_TABS.map(function([key, label]) {
+            var active = categoryTab === key;
+            var count = allVisible.filter(function(r) { return r.type === key; }).length;
+            return (
+              <button key={key}
+                style={{
+                  padding: "10px 18px", borderRadius: 8, fontSize: 14, cursor: "pointer",
+                  fontWeight: active ? 700 : 500,
+                  background: active ? COLORS.bleu : "#fff",
+                  color: active ? "#fff" : COLORS.noir,
+                  border: `1px solid ${active ? COLORS.bleu : "#d9dee5"}`,
+                }}
+                onClick={function() { setCategoryTab(key); setSelectedYear("all"); }}>
+                {label} <span style={{ opacity: 0.75, fontWeight: 500 }}>({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Compteurs rapides */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }} className="s-dash-stats">
           {[
-            { label: "Total", value: allVisible.length, color: COLORS.bleu },
+            { label: "Total", value: categoryVisible.length, color: COLORS.bleu },
             { label: "En cours", value: nbEnCours, color: "#0284c7" },
             { label: "Traitées", value: nbTraitees, color: COLORS.vert },
             { label: "Refusées / Annulées", value: nbRefusees, color: COLORS.rouge },
@@ -196,13 +224,6 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
             <select style={{ ...S.select, minWidth: 150 }} value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
               <option value="all">Toutes les années</option>
               {allYears.map(function(y) { return <option key={y} value={y}>{y}</option>; })}
-            </select>
-          </div>
-          <div>
-            <label style={S.label}>Catégorie</label>
-            <select style={{ ...S.select, minWidth: 200 }} value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-              <option value="all">Toutes</option>
-              {Object.entries(REQUEST_TYPES).map(function([k, v]) { return <option key={k} value={k}>{v}</option>; })}
             </select>
           </div>
           <div>
@@ -244,15 +265,15 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontSize: 13, color: COLORS.gris }}>
             {filtered.length} demande{filtered.length !== 1 ? "s" : ""} affichée{filtered.length !== 1 ? "s" : ""}
+            {" · " + REQUEST_TYPES[categoryTab]}
             {selectedYear !== "all" ? " · " + selectedYear : " · toutes années"}
-            {selectedType !== "all" ? " · " + REQUEST_TYPES[selectedType] : ""}
             {selectedStatus !== "all" ? " · " + (buildStatusOptions(workflowConfig).find(([k]) => k === selectedStatus)?.[1] || selectedStatus) : ""}
           </div>
           {filtered.length > 0 && (
             <button
               onClick={() => {
                 var dateStr = new Date().toISOString().slice(0, 10);
-                var typeLabel = selectedType !== "all" ? "_" + selectedType : "_toutes";
+                var typeLabel = "_" + categoryTab;
                 var yearLabel = selectedYear !== "all" ? "_" + selectedYear : "";
                 exportExcel(filtered, "DLC_demandes" + typeLabel + yearLabel + "_" + dateStr);
               }}
@@ -344,7 +365,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
           <div style={{ textAlign: "center", padding: "32px 16px" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
             <p style={{ color: COLORS.gris, fontSize: 14, margin: "0 0 12px" }}>Aucune demande pour cette sélection.</p>
-            <button style={S.btn} onClick={() => { setSelectedYear("all"); setSelectedType("all"); setSelectedStatus("all"); setSelectedAuthor("all"); setDateFrom(""); setDateTo(""); setSearch(""); }}>
+            <button style={S.btn} onClick={() => { setSelectedYear("all"); setSelectedStatus("all"); setSelectedAuthor("all"); setDateFrom(""); setDateTo(""); setSearch(""); }}>
               Voir toutes les demandes
             </button>
           </div>
@@ -367,7 +388,6 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
                   return (
                     <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                       <td style={{ ...S.td, fontFamily: "monospace", fontSize: 11, whiteSpace: "nowrap", color: COLORS.gris }}>{r.requestNumber || String(r.id)}</td>
-                      <td style={{ ...S.td, fontSize: 11 }}>{REQUEST_TYPES[r.type] || r.type}</td>
                       <td style={S.td}><strong>{r.title}</strong></td>
                       <td style={{ ...S.td, fontSize: 13 }}>{r.authorName}</td>
                       <td style={{ ...S.td, whiteSpace: "nowrap", fontSize: 13 }}>{r.date}</td>
