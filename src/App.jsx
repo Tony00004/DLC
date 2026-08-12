@@ -35,6 +35,12 @@ export default function App() {
     "Rona", "Super C", "Walmart", "Autre (précisez)",
   ]);
   const [matieresList, setMatieresList] = useState([...MATIERES]);
+  const [passionCategories, setPassionCategories] = useState([
+    { name: "Arts",       subOptions: ["Art dramatique", "Musique", "Danse", "Multimédia"] },
+    { name: "Action",     subOptions: ["Régulière", "Plein air"] },
+    { name: "Découverte", subOptions: [] },
+    { name: "Langue",     subOptions: [] },
+  ]);
   const [workflowConfig, setWorkflowConfig] = useState(cloneDefaultWorkflowConfig());
   const [statusDefinitions, setStatusDefinitions] = useState({
     soumise:   "Demande envoyée à la direction répondante",
@@ -101,6 +107,7 @@ export default function App() {
         if (settingsData.approbateurRules)    setApprobateurRules(settingsData.approbateurRules);
         if (settingsData.niveauxList)         setNiveauxList(settingsData.niveauxList);
         if (settingsData.fournisseurList)     setFournisseurList(settingsData.fournisseurList);
+        if (settingsData.passionCategories)   setPassionCategories(settingsData.passionCategories);
         if (settingsData.matieresList)        setMatieresList(settingsData.matieresList);
         if (settingsData.serviceTypes)        setServiceTypes(settingsData.serviceTypes);
         if (settingsData.calendarEvents)      setCalendarEvents(settingsData.calendarEvents);
@@ -346,6 +353,7 @@ export default function App() {
   const updateApprobateurRules  = persistSetting("approbateurRules", setApprobateurRules);
   const updateNiveauxList       = persistSetting("niveauxList", setNiveauxList);
   const updateFournisseurList   = persistSetting("fournisseurList", setFournisseurList);
+  const updatePassionCategories = persistSetting("passionCategories", setPassionCategories);
   const updateMatieresList      = persistSetting("matieresList", setMatieresList);
   const updateWorkflowConfig    = persistSetting("workflowConfig", setWorkflowConfig);
   const updateNotificationConfig = persistSetting("notificationConfig", setNotificationConfig);
@@ -384,10 +392,10 @@ export default function App() {
       return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
     }
     if (view === "form_achat") {
-      return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} fournisseurList={fournisseurList} />;
+      return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} fournisseurList={fournisseurList} passionCategories={passionCategories} />;
     }
     if (view === "form_activite") {
-      return <FormActivite user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} />;
+      return <FormActivite user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} passionCategories={passionCategories} />;
     }
     if (view === "form_requisition") {
       return <FormRequisition user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} serviceTypes={serviceTypes} />;
@@ -422,6 +430,7 @@ export default function App() {
         niveauxList={niveauxList}
         matieresList={matieresList}
         fournisseurList={fournisseurList}
+        passionCategories={passionCategories}
       />;
     }
     if (view === "edit_activite" && editContext) {
@@ -435,6 +444,7 @@ export default function App() {
         approbateurRules={approbateurRules}
         niveauxList={niveauxList}
         matieresList={matieresList}
+        passionCategories={passionCategories}
       />;
     }
     if (view === "edit_requisition" && editContext) {
@@ -469,7 +479,7 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} workflowConfig={workflowConfig} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} notificationConfig={notificationConfig} onUpdateNotificationConfig={updateNotificationConfig} showDemoAccounts={showDemoAccounts} onUpdateShowDemoAccounts={updateShowDemoAccounts} fournisseurList={fournisseurList} onUpdateFournisseurList={updateFournisseurList} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} notificationConfig={notificationConfig} onUpdateNotificationConfig={updateNotificationConfig} showDemoAccounts={showDemoAccounts} onUpdateShowDemoAccounts={updateShowDemoAccounts} fournisseurList={fournisseurList} onUpdateFournisseurList={updateFournisseurList} passionCategories={passionCategories} onUpdatePassionCategories={updatePassionCategories} />;
     }
     return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
   }

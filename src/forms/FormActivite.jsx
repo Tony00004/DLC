@@ -4,8 +4,16 @@ import { S } from "../styles";
 import { resolveApprobateur } from "../utils/approbateur";
 import { printZone } from "../utils/print";
 import { F } from "../components/FormField";
+import { PassionPicker } from "../components/PassionPicker";
 
-export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES }) {
+const DEFAULT_PASSION_CATEGORIES = [
+  { name: "Arts",       subOptions: ["Art dramatique", "Musique", "Danse", "Multimédia"] },
+  { name: "Action",     subOptions: ["Régulière", "Plein air"] },
+  { name: "Découverte", subOptions: [] },
+  { name: "Langue",     subOptions: [] },
+];
+
+export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, passionCategories = DEFAULT_PASSION_CATEGORIES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
   const [form, setForm] = useState({
@@ -22,6 +30,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
     groupes: fd["Groupes"] || fd.groupes || "",
     passion: fd.passion || "",
     passionTypes: fd.passionTypes || [],
+    passionSubChoices: fd.passionSubChoices || {},
     passionAutres: fd.passionAutres || "",
     obligatoire: fd.obligatoire || "",
     autresClientele: fd.autresClientele || "",
@@ -106,6 +115,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
       groupes: form.groupes,
       passion: form.passion,
       passionTypes: form.passionTypes,
+      passionSubChoices: form.passionSubChoices,
       passionAutres: form.passionAutres,
       obligatoire: form.obligatoire,
       autresClientele: form.autresClientele,
@@ -393,20 +403,15 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
             </div>
           </div>
           {form.passion === "Oui" && (
-            <div style={{ padding: "12px 16px", background: "#f0f8f4", borderRadius: 6, marginBottom: 12 }}>
-              <label style={S.label}>Quelle est la passion concernée ?</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px" }}>
-                {["Action", "Création", "Découverte", "Langue", "Autres"].map((p) => (
-                  <label key={p} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 14 }}>
-                    <input type="checkbox" checked={form.passionTypes.includes(p)} onChange={() => toggleCheck("passionTypes", p)} />
-                    {p}
-                  </label>
-                ))}
-              </div>
-              {form.passionTypes.includes("Autres") && (
-                <input style={{ ...S.input, marginTop: 8, maxWidth: 420 }} placeholder="Précisez la passion" value={form.passionAutres} onChange={(e) => setForm({ ...form, passionAutres: e.target.value })} />
-              )}
-            </div>
+            <PassionPicker
+              categories={passionCategories}
+              types={form.passionTypes}
+              subChoices={form.passionSubChoices}
+              autres={form.passionAutres}
+              onToggleType={(name) => toggleCheck("passionTypes", name)}
+              onSubChoice={(name, sub) => setForm(prev => ({ ...prev, passionSubChoices: { ...prev.passionSubChoices, [name]: sub } }))}
+              onAutresChange={(val) => setForm(prev => ({ ...prev, passionAutres: val }))}
+            />
           )}
 
           {/* ── Transport (sortie seulement) ── */}
@@ -533,7 +538,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
             <button type="submit" style={{ ...S.btnPrimary, background: editMode ? COLORS.vert : COLORS.vert }}>{editMode ? "Enregistrer les modifications" : "Envoyer la demande"}</button>
             {!editMode && <button type="button" style={{ background: "#04043C", color: "#fff", border: "1px solid #04043C", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => printZone()}>Imprimer</button>}
             {!editMode && <button type="button" style={{ background: "#23b090", color: "#fff", border: "1px solid #1a8a70", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => {
-              setForm({ responsables: [{ nom: user.name, courriel: user.email }], nomActivite: "", typeActivite: "", datesPrevues: [{ date: "", heureDebut: "09:15", heureFin: "15:40" }], description: "", niveauxConcernes: [], matieresConcernees: [], autreMatiere: "", autreNiveau: "", groupes: "", passion: "", passionTypes: [], passionAutres: "", obligatoire: "", autresClientele: "", coutEleve: "", nbEleves: "", coutAdulte: "", nbAdultes: "", coutLiberation: config.coutLiberationDefault, nbPeriodes: "", coutTransport: "", autreMontant: "", typeTransport: "", autreTransport: "", nomEtablissement: "", adresseComplete: "", personneContact: "", telephone: "", poste: "", heureDepart: "", heureRetour: "" });
+              setForm({ responsables: [{ nom: user.name, courriel: user.email }], nomActivite: "", typeActivite: "", datesPrevues: [{ date: "", heureDebut: "09:15", heureFin: "15:40" }], description: "", niveauxConcernes: [], matieresConcernees: [], autreMatiere: "", autreNiveau: "", groupes: "", passion: "", passionTypes: [], passionSubChoices: {}, passionAutres: "", obligatoire: "", autresClientele: "", coutEleve: "", nbEleves: "", coutAdulte: "", nbAdultes: "", coutLiberation: config.coutLiberationDefault, nbPeriodes: "", coutTransport: "", autreMontant: "", typeTransport: "", autreTransport: "", nomEtablissement: "", adresseComplete: "", personneContact: "", telephone: "", poste: "", heureDepart: "", heureRetour: "" });
               setError("");
             }}>Réinitialiser</button>}
             <button type="button" style={S.btn} onClick={onBack}>{editMode ? "Annuler les modifications" : "Annuler"}</button>

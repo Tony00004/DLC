@@ -3,7 +3,7 @@ import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList, passionCategories = [], onUpdatePassionCategories }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -11,6 +11,8 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
   const [newNiveau,      setNewNiveau]      = useState("");
   const [newMatiere,     setNewMatiere]     = useState("");
   const [newFournisseur, setNewFournisseur] = useState("");
+  const [newPassionCategory, setNewPassionCategory] = useState("");
+  const [newSubOption, setNewSubOption] = useState({});
   const [savedMsg, setSavedMsg] = useState("");
 
   function toggleRole(userId, role) {
@@ -65,6 +67,82 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
       ...prev,
       templates: { ...prev.templates, [kind]: { ...prev.templates[kind], [field]: value } },
     }));
+  }
+
+  function addPassionCategory() {
+    const name = newPassionCategory.trim();
+    if (name && !passionCategories.some(c => c.name === name)) {
+      onUpdatePassionCategories(prev => [...prev, { name, subOptions: [] }]);
+      setNewPassionCategory("");
+    }
+  }
+  function removePassionCategory(name) {
+    onUpdatePassionCategories(prev => prev.filter(c => c.name !== name));
+  }
+  function addSubOption(catName) {
+    const val = (newSubOption[catName] || "").trim();
+    if (!val) return;
+    onUpdatePassionCategories(prev => prev.map(c => c.name === catName
+      ? { ...c, subOptions: c.subOptions.includes(val) ? c.subOptions : [...c.subOptions, val] }
+      : c));
+    setNewSubOption(prev => ({ ...prev, [catName]: "" }));
+  }
+  function removeSubOption(catName, sub) {
+    onUpdatePassionCategories(prev => prev.map(c => c.name === catName
+      ? { ...c, subOptions: c.subOptions.filter(s => s !== sub) }
+      : c));
+  }
+  function passionCategoriesEditor() {
+    return (
+      <div style={{ marginTop: 20 }}>
+        <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Catégories de concentration (passion)</h4>
+        <p style={{ fontSize: 12, color: COLORS.gris, marginBottom: 10 }}>
+          S'applique aux deux formulaires : Achat de matériel et Activités/Sorties. Une catégorie peut avoir des sous-choix (un seul sélectionnable à la fois) — laissez-la sans sous-choix pour une simple case à cocher. « Autres (précisez) » reste toujours disponible en dernier, sans configuration.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {passionCategories.map((cat) => (
+            <div key={cat.name} style={{ padding: "10px 14px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <strong style={{ fontSize: 14, flex: 1 }}>{cat.name}</strong>
+                <button type="button"
+                  style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
+                  onClick={() => removePassionCategory(cat.name)}
+                  title="Supprimer la catégorie">✕</button>
+              </div>
+              {cat.subOptions.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {cat.subOptions.map((sub) => (
+                    <div key={sub} style={{ display: "flex", alignItems: "center", gap: 4, background: "#fff", border: "1px solid #d9dee5", borderRadius: 16, padding: "3px 10px 3px 12px", fontSize: 12 }}>
+                      <span>{sub}</span>
+                      <button type="button"
+                        style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 13, padding: "0 2px", lineHeight: 1 }}
+                        onClick={() => removeSubOption(cat.name, sub)}
+                        title="Retirer">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 6 }}>
+                <input style={{ ...S.input, maxWidth: 220, fontSize: 12, padding: "5px 8px" }}
+                  placeholder="Nouveau sous-choix…"
+                  value={newSubOption[cat.name] || ""}
+                  onChange={e => setNewSubOption(prev => ({ ...prev, [cat.name]: e.target.value }))}
+                  onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+                <button type="button" style={{ ...S.btn, fontSize: 12, padding: "5px 10px" }} onClick={() => addSubOption(cat.name)}>+ Ajouter</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 12 }}>
+          <input style={{ ...S.input, maxWidth: 280 }}
+            placeholder="Nouvelle catégorie…"
+            value={newPassionCategory}
+            onChange={e => setNewPassionCategory(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
+          <button type="button" style={S.btnPrimary} onClick={addPassionCategory}>+ Ajouter une catégorie</button>
+        </div>
+      </div>
+    );
   }
 
   const tabBtn = (id) => ({
@@ -540,6 +618,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 </div>
               );
             })()}
+
+            {passionCategoriesEditor()}
           </div>
         )}
 
@@ -616,6 +696,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 </>
               );
             })()}
+
+            {passionCategoriesEditor()}
           </div>
         )}
 

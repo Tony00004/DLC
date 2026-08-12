@@ -10,6 +10,19 @@ import {
 
 const FIELD_LABEL = { fontSize: 13, fontWeight: 700, color: COLORS.noir, marginBottom: 2 };
 
+// Résumé lisible des catégories de concentration (passion) cochées, avec leur
+// sous-choix entre parenthèses le cas échéant — ex. "Arts (Danse), Action (Plein air)".
+function passionSummary(fd) {
+  const types = fd.passionTypes || [];
+  if (types.length === 0) return "";
+  const subChoices = fd.passionSubChoices || {};
+  return types.map((name) => {
+    if (name === "Autres") return fd.passionAutres ? `Autres (${fd.passionAutres})` : "Autres";
+    const sub = subChoices[name];
+    return sub ? `${name} (${sub})` : name;
+  }).join(", ");
+}
+
 export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onReactivate, workflowConfig }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
@@ -170,7 +183,9 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     ["Achat par moi-même", request.formData.achatPersonnel],
                     ["Conférencier / Conférencière", request.formData.conferencier],
                     ["Activité parascolaire", request.formData.parascolaire],
-                    ["Budget concentration (passion)", request.formData.budgetPassion],
+                    ["Budget concentration (passion)", request.formData.budgetPassion === "Oui"
+                      ? "Oui" + (passionSummary(request.formData) ? " — " + passionSummary(request.formData) : "")
+                      : request.formData.budgetPassion],
                   ].map(([label, val]) => val ? (
                     <div key={label} style={{ marginBottom: 4 }}>
                       <div style={FIELD_LABEL}>{label}</div>
@@ -320,6 +335,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     <Champ label="Groupes" val={fd.groupes || fd["Groupes"]} />
                     <Champ label="Matières concernées" val={fd.matieresConcernees?.join(", ")} />
                     <Champ label="Activité obligatoire" val={fd.obligatoire} />
+                    <Champ label="Concentration (passion)" val={fd.passion === "Oui" ? "Oui" + (passionSummary(fd) ? " — " + passionSummary(fd) : "") : fd.passion} />
                     <Champ label="Description" val={fd.description || fd["Description"]} fullWidth />
                     {fd.autresClientele && <Champ label="Autres clientèles" val={fd.autresClientele} fullWidth />}
                   </div>

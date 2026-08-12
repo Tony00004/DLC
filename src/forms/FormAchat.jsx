@@ -4,6 +4,7 @@ import { S } from "../styles";
 import { resolveApprobateur } from "../utils/approbateur";
 import { printZone } from "../utils/print";
 import { F } from "../components/FormField";
+import { PassionPicker } from "../components/PassionPicker";
 
 const DEFAULT_FOURNISSEURS = [
   "Amazon (NON AUTORISÉ)", "Canadian Tire", "Costco", "Dollarama", "IGA", "Intermarché",
@@ -11,7 +12,14 @@ const DEFAULT_FOURNISSEURS = [
   "Rona", "Super C", "Walmart", "Autre (précisez)",
 ];
 
-export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS }) {
+const DEFAULT_PASSION_CATEGORIES = [
+  { name: "Arts",       subOptions: ["Art dramatique", "Musique", "Danse", "Multimédia"] },
+  { name: "Action",     subOptions: ["Régulière", "Plein air"] },
+  { name: "Découverte", subOptions: [] },
+  { name: "Langue",     subOptions: [] },
+];
+
+export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS, passionCategories = DEFAULT_PASSION_CATEGORIES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
 
@@ -33,6 +41,9 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
   const [conferencier,  setConferencier]  = useState(fd.conferencier || "");
   const [parascolaire,  setParascolaire]  = useState(fd.parascolaire || "");
   const [budgetPassion, setBudgetPassion] = useState(fd.budgetPassion || "");
+  const [passionTypes,     setPassionTypes]     = useState(fd.passionTypes || []);
+  const [passionSubChoices, setPassionSubChoices] = useState(fd.passionSubChoices || {});
+  const [passionAutres,    setPassionAutres]    = useState(fd.passionAutres || "");
 
   const initRows = (fd._rows && fd._rows.length > 0)
     ? fd._rows.map(r => ({ ...r }))
@@ -128,7 +139,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
       directionResponsable: direction,
       fournisseurPrincipal: fournisseur, autreFournisseur,
       natureActivite: nature,
-      achatPersonnel, conferencier, parascolaire, budgetPassion,
+      achatPersonnel, conferencier, parascolaire, budgetPassion, passionTypes, passionSubChoices, passionAutres,
       total: total.toFixed(2) + " $",
       _rows: rows,
       _totalNum: total,
@@ -274,8 +285,19 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
             { label: "Demande en lien avec un conférencier ou une conférencière", val: conferencier, set: setConferencier,
               warning: "Dans un minimum de trois semaines avant la conférence, il est important que le conférencier ou la conférencière remplisse le formulaire « Déclaration relative aux antécédents judiciaires ». Pour plus d'informations, merci de communiquer avec la secrétaire de l'école." },
             { label: "Demande en lien avec une activité parascolaire", val: parascolaire, set: setParascolaire },
-            { label: "Demande en lien avec le budget d'une concentration (passion)", val: budgetPassion, set: setBudgetPassion },
-          ].map(({ label, val, set, warning }) => (
+            { label: "Demande en lien avec le budget d'une concentration (passion)", val: budgetPassion, set: setBudgetPassion,
+              extra: budgetPassion === "Oui" && (
+                <PassionPicker
+                  categories={passionCategories}
+                  types={passionTypes}
+                  subChoices={passionSubChoices}
+                  autres={passionAutres}
+                  onToggleType={(name) => setPassionTypes(prev => prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name])}
+                  onSubChoice={(name, sub) => setPassionSubChoices(prev => ({ ...prev, [name]: sub }))}
+                  onAutresChange={setPassionAutres}
+                />
+              ) },
+          ].map(({ label, val, set, warning, extra }) => (
             <div key={label} style={{ padding: "10px 14px", background: "#f9fafb", borderRadius: 6, border: "1px solid #e5e7eb" }}>
               <label style={{ ...S.label, margin: "0 0 8px", flex: 1 }}>{label} <span style={{ color: COLORS.rouge }}>*</span></label>
               <div style={{ display: "flex", gap: 20 }}>
@@ -291,6 +313,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
                   ⚠️ {warning}
                 </div>
               )}
+              {extra && <div style={{ marginTop: 10 }}>{extra}</div>}
             </div>
           ))}
         </div>
@@ -383,6 +406,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
               setDateSouhaitee(""); setMatiere(""); setMatiereArts(""); setAutreArt(""); setAutreMatiere("");
               setNiveau(""); setAutreNiveau(""); setDirection(""); setFournisseur(""); setAutreFournisseur(""); setNature("");
               setAchatPersonnel(""); setConferencier(""); setParascolaire(""); setBudgetPassion("");
+              setPassionTypes([]); setPassionSubChoices({}); setPassionAutres("");
               setRows([{ id: Date.now(), qty: "", nom: "", description: "", numero: "", lien: "", prixUnitaire: "", soustotal: "", sansTaxe: false }]);
               setErreur("");
             }}>
