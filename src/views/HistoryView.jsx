@@ -64,7 +64,20 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   var [selectedYear, setSelectedYear] = useState(bestYear);
   var [selectedType, setSelectedType] = useState("all");
   var [selectedStatus, setSelectedStatus] = useState("all");
+  var [selectedAuthor, setSelectedAuthor] = useState("all");
+  var [dateFrom, setDateFrom] = useState("");
+  var [dateTo, setDateTo] = useState("");
   var [search, setSearch] = useState("");
+
+  // Demandeurs distincts (pour le filtre « Demandeur »)
+  var allAuthors = Array.from(new Set(allVisible.map(function(r) { return r.authorName; }))).sort();
+
+  function resetFilters() {
+    setSelectedYear(bestYear); setSelectedType("all"); setSelectedStatus("all");
+    setSelectedAuthor("all"); setDateFrom(""); setDateTo(""); setSearch("");
+  }
+  var filtersActive = selectedYear !== bestYear || selectedType !== "all" || selectedStatus !== "all"
+    || selectedAuthor !== "all" || dateFrom !== "" || dateTo !== "" || search !== "";
 
   // Filtrer
   var t = search.toLowerCase();
@@ -72,11 +85,14 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
     var yearOk = selectedYear === "all" || getSchoolYear(r.date) === selectedYear;
     var typeOk = selectedType === "all" || r.type === selectedType;
     var statusOk = selectedStatus === "all" || r.status === selectedStatus;
+    var authorOk = selectedAuthor === "all" || r.authorName === selectedAuthor;
+    var dateFromOk = !dateFrom || r.date >= dateFrom;
+    var dateToOk = !dateTo || r.date <= dateTo;
     var searchOk = !t ||
       (r.requestNumber || "").toLowerCase().includes(t) ||
       r.title.toLowerCase().includes(t) ||
       r.authorName.toLowerCase().includes(t);
-    return yearOk && typeOk && statusOk && searchOk;
+    return yearOk && typeOk && statusOk && authorOk && dateFromOk && dateToOk && searchOk;
   }).sort(function(a, b) { return b.date.localeCompare(a.date); });
 
   // Compteurs sur toutes les demandes visibles (pas juste le filtre)
@@ -100,6 +116,28 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
               : "Vos demandes et celles sur lesquelles vous avez agi"}
           </p>
         </div>
+
+        {/* Bascule Mes demandes / Demandes sur lesquelles j'ai agi */}
+        {hasRoles && !isAdmin && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+            {[["mes", "Mes demandes"], ["agis", "Demandes sur lesquelles j'ai agi"]].map(function([key, label]) {
+              var active = histTab === key;
+              return (
+                <button key={key}
+                  style={{
+                    padding: "8px 16px", borderRadius: 6, fontSize: 13, cursor: "pointer",
+                    fontWeight: active ? 700 : 500,
+                    background: active ? COLORS.bleu : "#fff",
+                    color: active ? "#fff" : COLORS.gris,
+                    border: `1px solid ${active ? COLORS.bleu : "#d9dee5"}`,
+                  }}
+                  onClick={function() { setHistTab(key); }}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Compteurs rapides */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 20 }} className="s-dash-stats">
@@ -139,13 +177,29 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
               {buildStatusOptions(workflowConfig).map(function([k, label]) { return <option key={k} value={k}>{label}</option>; })}
             </select>
           </div>
+          {allAuthors.length > 1 && (
+            <div>
+              <label style={S.label}>Demandeur</label>
+              <select style={{ ...S.select, minWidth: 170 }} value={selectedAuthor} onChange={(e) => setSelectedAuthor(e.target.value)}>
+                <option value="all">Tous</option>
+                {allAuthors.map(function(a) { return <option key={a} value={a}>{a}</option>; })}
+              </select>
+            </div>
+          )}
+          <div>
+            <label style={S.label}>Du</label>
+            <input type="date" style={{ ...S.input, minWidth: 150 }} value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          </div>
+          <div>
+            <label style={S.label}>Au</label>
+            <input type="date" style={{ ...S.input, minWidth: 150 }} value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          </div>
           <div style={{ flex: 1, minWidth: 180 }}>
             <label style={S.label}>Recherche</label>
             <input style={S.input} placeholder="Nº, titre, demandeur…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
-          {(selectedYear !== bestYear || selectedType !== "all" || selectedStatus !== "all" || search !== "") && (
-            <button style={{ ...S.btn, fontSize: 12, padding: "6px 12px", alignSelf: "flex-end" }}
-              onClick={() => { setSelectedYear(bestYear); setSelectedType("all"); setSelectedStatus("all"); setSearch(""); }}>
+          {filtersActive && (
+            <button style={{ ...S.btn, fontSize: 12, padding: "6px 12px", alignSelf: "flex-end" }} onClick={resetFilters}>
               ✕ Réinitialiser
             </button>
           )}
@@ -255,7 +309,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
           <div style={{ textAlign: "center", padding: "32px 16px" }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
             <p style={{ color: COLORS.gris, fontSize: 14, margin: "0 0 12px" }}>Aucune demande pour cette sélection.</p>
-            <button style={S.btn} onClick={() => { setSelectedYear("all"); setSelectedType("all"); setSelectedStatus("all"); setSearch(""); }}>
+            <button style={S.btn} onClick={() => { setSelectedYear("all"); setSelectedType("all"); setSelectedStatus("all"); setSelectedAuthor("all"); setDateFrom(""); setDateTo(""); setSearch(""); }}>
               Voir toutes les demandes
             </button>
           </div>
