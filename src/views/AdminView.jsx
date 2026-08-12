@@ -3,7 +3,7 @@ import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, digestEmailConfig, onUpdateDigestEmailConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -37,10 +37,10 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
     { id: "achat",         label: "Formulaire — Achat matériel",    icon: "🛒" },
     { id: "activite",      label: "Formulaire — Activités/Sorties", icon: "🎒" },
     { id: "requisition",   label: "Formulaire — Réquisition interne", icon: "🔧" },
-    { id: "digest",        label: "Courriel récapitulatif",         icon: "📧" },
+    { id: "notifications",  label: "Notifications par courriel",     icon: "📧" },
   ];
 
-  const DIGEST_ROLES = [
+  const NOTIF_ROLES = [
     { role: "A",  label: "Approbateur",         color: "#0284c7" },
     { role: "A2", label: "Approbateur +",       color: "#2563eb" },
     { role: "B",  label: "Vérificateur",        color: "#7c3aed" },
@@ -48,15 +48,23 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
     { role: "C2", label: "Magasinier",          color: "#0891b2" },
     { role: "C3", label: "Concierge",           color: "#16a34a" },
   ];
-  const digestEnabledRoles = digestEmailConfig?.enabledRoles || {};
-  function toggleDigestRole(role) {
-    onUpdateDigestEmailConfig(prev => ({
+  const notifRoles = notificationConfig?.roles || {};
+  const requesterMode = notificationConfig?.requester?.mode || "each_stage";
+
+  function updateRequesterMode(mode) {
+    onUpdateNotificationConfig(prev => ({ ...prev, requester: { ...prev.requester, mode } }));
+  }
+  function updateRoleField(role, field, value) {
+    onUpdateNotificationConfig(prev => ({
       ...prev,
-      enabledRoles: { ...prev.enabledRoles, [role]: !(prev.enabledRoles ? prev.enabledRoles[role] : true) },
+      roles: { ...prev.roles, [role]: { ...prev.roles[role], [field]: value } },
     }));
   }
-  function updateDigestTemplate(field, value) {
-    onUpdateDigestEmailConfig(prev => ({ ...prev, [field]: value }));
+  function updateTemplateField(kind, field, value) {
+    onUpdateNotificationConfig(prev => ({
+      ...prev,
+      templates: { ...prev.templates, [kind]: { ...prev.templates[kind], [field]: value } },
+    }));
   }
 
   const tabBtn = (id) => ({
@@ -687,58 +695,94 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
           </div>
         )}
 
-        {/* ── Onglet : Courriel récapitulatif ── */}
-        {activeTab === "digest" && (
+        {/* ── Onglet : Notifications par courriel ── */}
+        {activeTab === "notifications" && (
           <div>
             {sectionTitle(
-              "Courriel récapitulatif quotidien",
-              "Chaque jour ouvrable (lundi à vendredi) à 7h30, un courriel est envoyé aux personnes ayant au moins une demande nécessitant leur attention. Aucun courriel n'est envoyé si le nombre est de 0."
+              "Notifications par courriel",
+              "Configurez qui reçoit un courriel, à quel rythme, et le contenu de chaque type de courriel. Aucun courriel n'est envoyé s'il n'y a rien à signaler."
             )}
 
-            <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Rôles notifiés</h4>
+            <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Demandeur (personne qui a soumis la demande)</h4>
+            <div style={{ marginBottom: 28, maxWidth: 420 }}>
+              <select style={S.select} value={requesterMode} onChange={e => updateRequesterMode(e.target.value)}>
+                <option value="each_stage">À chaque étape</option>
+                <option value="after_verification">Seulement après la vérification</option>
+                <option value="never">Aucunement</option>
+              </select>
+            </div>
+
+            <h4 style={{ margin: "0 0 10px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Rôles du parcours</h4>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 28 }}>
-              {DIGEST_ROLES.map(({ role, label, color }) => {
-                const isActive = digestEnabledRoles[role] !== false;
+              {NOTIF_ROLES.map(({ role, label, color }) => {
+                const roleCfg = notifRoles[role] || {};
+                const isActive = roleCfg.enabled !== false;
+                const mode = roleCfg.mode || "immediate";
                 return (
-                  <div key={role} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 16px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb" }}>
-                    <span style={{ ...S.badge(color), minWidth: 32, textAlign: "center" }}>{role}</span>
-                    <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: isActive ? color : "#9ca3af" }}>{label}</div>
-                    <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }} onClick={() => toggleDigestRole(role)}>
-                      <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
-                      <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                  <div key={role} style={{ padding: "12px 16px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                      <span style={{ ...S.badge(color), minWidth: 32, textAlign: "center" }}>{role}</span>
+                      <div style={{ flex: 1, fontWeight: 700, fontSize: 14, color: isActive ? color : "#9ca3af", minWidth: 140 }}>{label}</div>
+                      <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }} onClick={() => updateRoleField(role, "enabled", !isActive)}>
+                        <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
+                        <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? color : "#9ca3af", minWidth: 46 }}>{isActive ? "Actif" : "Inactif"}</span>
+                      {isActive && (
+                        <select style={{ ...S.select, maxWidth: 220 }} value={mode} onChange={e => updateRoleField(role, "mode", e.target.value)}>
+                          <option value="immediate">À chaque demande</option>
+                          <option value="daily1">1 fois par jour</option>
+                          <option value="daily2">2 fois par jour</option>
+                        </select>
+                      )}
+                      {isActive && mode !== "immediate" && (
+                        <input type="time" style={{ ...S.input, maxWidth: 110 }} value={roleCfg.time1 || "07:30"} onChange={e => updateRoleField(role, "time1", e.target.value)} />
+                      )}
+                      {isActive && mode === "daily2" && (
+                        <input type="time" style={{ ...S.input, maxWidth: 110 }} value={roleCfg.time2 || "13:00"} onChange={e => updateRoleField(role, "time2", e.target.value)} />
+                      )}
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: isActive ? color : "#9ca3af", minWidth: 46, textAlign: "right" }}>{isActive ? "Actif" : "Inactif"}</span>
                   </div>
                 );
               })}
             </div>
-
-            <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>Contenu du courriel</h4>
-            <p style={{ color: COLORS.gris, fontSize: 12, marginBottom: 14 }}>
-              Jetons disponibles : <code>{"{{nom}}"}</code> (destinataire), <code>{"{{total}}"}</code> (nombre de demandes), <code>{"{{date}}"}</code>. La mise en page visuelle (logo, couleurs, bouton vers l'application) reste fixe.
+            <p style={{ fontSize: 12, color: COLORS.gris, marginBottom: 28 }}>
+              ℹ️ « À chaque demande » envoie un courriel dès que la demande parvient à ce rôle. Les cadences 1×/2× par jour sont vérifiées toutes les 10 minutes et n'envoient qu'un résumé s'il y a au moins une demande en attente.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <div>
-                <label style={S.label}>Objet du courriel</label>
-                <input style={S.input} value={digestEmailConfig?.subjectTemplate || ""} onChange={e => updateDigestTemplate("subjectTemplate", e.target.value)} />
-              </div>
-              <div>
-                <label style={S.label}>Message d'accueil</label>
-                <input style={S.input} value={digestEmailConfig?.greetingTemplate || ""} onChange={e => updateDigestTemplate("greetingTemplate", e.target.value)} />
-              </div>
-              <div>
-                <label style={S.label}>Phrase d'introduction</label>
-                <input style={S.input} value={digestEmailConfig?.introTemplate || ""} onChange={e => updateDigestTemplate("introTemplate", e.target.value)} />
-              </div>
-              <div>
-                <label style={S.label}>Note de bas de page</label>
-                <textarea style={S.textarea} value={digestEmailConfig?.footerTemplate || ""} onChange={e => updateDigestTemplate("footerTemplate", e.target.value)} />
-              </div>
-            </div>
-            <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 14 }}>
-              ℹ️ Les modifications sont appliquées au prochain envoi (7h30, jours ouvrables).
-            </p>
+            {[
+              { kind: "requester", title: "Contenu — courriel au demandeur", tokens: "{{nom}}, {{titre}}, {{statut}}, {{date}}" },
+              { kind: "approverImmediate", title: "Contenu — notification immédiate (rôles du parcours)", tokens: "{{nom}}, {{titre}}, {{role}}, {{date}}" },
+              { kind: "approverDigest", title: "Contenu — récapitulatif groupé (rôles du parcours)", tokens: "{{nom}}, {{total}}, {{date}}" },
+            ].map(({ kind, title, tokens }) => {
+              const tpl = (notificationConfig?.templates || {})[kind] || {};
+              return (
+                <div key={kind} style={{ marginBottom: 28 }}>
+                  <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{title}</h4>
+                  <p style={{ color: COLORS.gris, fontSize: 12, marginBottom: 12 }}>
+                    Jetons disponibles : <code>{tokens}</code>. La mise en page visuelle (logo, couleurs, bouton vers l'application) reste fixe.
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div>
+                      <label style={S.label}>Objet du courriel</label>
+                      <input style={S.input} value={tpl.subjectTemplate || ""} onChange={e => updateTemplateField(kind, "subjectTemplate", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={S.label}>Message d'accueil</label>
+                      <input style={S.input} value={tpl.greetingTemplate || ""} onChange={e => updateTemplateField(kind, "greetingTemplate", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={S.label}>Phrase d'introduction</label>
+                      <input style={S.input} value={tpl.introTemplate || ""} onChange={e => updateTemplateField(kind, "introTemplate", e.target.value)} />
+                    </div>
+                    <div>
+                      <label style={S.label}>Note de bas de page</label>
+                      <textarea style={S.textarea} value={tpl.footerTemplate || ""} onChange={e => updateTemplateField(kind, "footerTemplate", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
