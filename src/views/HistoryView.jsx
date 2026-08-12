@@ -79,8 +79,37 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
   var filtersActive = selectedYear !== bestYear || selectedType !== "all" || selectedStatus !== "all"
     || selectedAuthor !== "all" || dateFrom !== "" || dateTo !== "" || search !== "";
 
+  // Tri des colonnes du tableau
+  var [sortField, setSortField] = useState("date");
+  var [sortDir, setSortDir] = useState("desc");
+  var SORT_COLUMNS = [
+    { key: "requestNumber", label: "Nº demande", defaultDir: "asc", get: function(r) { return r.requestNumber || String(r.id); } },
+    { key: "type",          label: "Catégorie",  defaultDir: "asc", get: function(r) { return REQUEST_TYPES[r.type] || r.type; } },
+    { key: "title",         label: "Titre",      defaultDir: "asc", get: function(r) { return r.title; } },
+    { key: "authorName",    label: "Demandeur",  defaultDir: "asc", get: function(r) { return r.authorName; } },
+    { key: "date",          label: "Date",       defaultDir: "desc", get: function(r) { return r.date; } },
+    { key: "status",        label: "Statut",     defaultDir: "asc", get: function(r) { return getStatusMeta(r.type, r.status, workflowConfig).label; } },
+    { key: "approbateur",   label: "Approbateur", defaultDir: "asc", get: function(r) {
+        var h = r.history && r.history.find(function(h) { return h.status === "acceptee"; });
+        return h ? h.by : "";
+      } },
+    { key: "prix",          label: "Prix total", defaultDir: "desc", get: function(r) {
+        var n = parseFloat(String(getPrixTotal(r)).replace(/[^0-9.-]/g, ""));
+        return isNaN(n) ? -1 : n;
+      } },
+  ];
+  function handleSort(col) {
+    if (sortField === col.key) {
+      setSortDir(function(d) { return d === "asc" ? "desc" : "asc"; });
+    } else {
+      setSortField(col.key);
+      setSortDir(col.defaultDir);
+    }
+  }
+
   // Filtrer
   var t = search.toLowerCase();
+  var activeSortCol = SORT_COLUMNS.find(function(c) { return c.key === sortField; }) || SORT_COLUMNS[4];
   var filtered = allVisible.filter(function(r) {
     var yearOk = selectedYear === "all" || getSchoolYear(r.date) === selectedYear;
     var typeOk = selectedType === "all" || r.type === selectedType;
@@ -93,7 +122,13 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
       r.title.toLowerCase().includes(t) ||
       r.authorName.toLowerCase().includes(t);
     return yearOk && typeOk && statusOk && authorOk && dateFromOk && dateToOk && searchOk;
-  }).sort(function(a, b) { return b.date.localeCompare(a.date); });
+  }).sort(function(a, b) {
+    var av = activeSortCol.get(a), bv = activeSortCol.get(b);
+    var cmp = typeof av === "number" && typeof bv === "number"
+      ? av - bv
+      : String(av).localeCompare(String(bv), "fr", { sensitivity: "base" });
+    return sortDir === "asc" ? cmp : -cmp;
+  });
 
   // Compteurs sur toutes les demandes visibles (pas juste le filtre)
   var nbEnCours = allVisible.filter(function(r) { return !["traitee","refusee","annulee"].includes(r.status); }).length;
@@ -318,9 +353,12 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
             <table style={S.table}>
               <thead>
                 <tr>
-                  {["Nº demande", "Catégorie", "Titre", "Demandeur", "Date", "Statut", "Approbateur", "Prix total", ""].map((h) => (
-                    <th key={h} style={S.th}>{h}</th>
+                  {SORT_COLUMNS.map((col) => (
+                    <th key={col.key} style={{ ...S.th, cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }} onClick={() => handleSort(col)} title="Trier">
+                      {col.label} {sortField === col.key ? (sortDir === "asc" ? "▲" : "▼") : ""}
+                    </th>
                   ))}
+                  <th style={S.th}></th>
                 </tr>
               </thead>
               <tbody>
