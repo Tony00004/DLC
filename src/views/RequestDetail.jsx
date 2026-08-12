@@ -563,12 +563,10 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                     const tousRecus = rows.length > 0 && rows.every(r => r.recu);
                     const certainsRecus = rows.some(r => r.recu) && !tousRecus;
                     const tousCommandes = rows.length > 0 && rows.every(r => r.commande);
-                    const certainsCommandes = rows.some(r => r.commande) && !tousCommandes;
                     // Tant que tous les articles ne sont pas cochés "commandé", la demande ne peut
-                    // pas être marquée complétée : elle doit rester partiellement complétée pour
-                    // que l'agent administratif puisse continuer à y laisser des commentaires.
-                    // Le statut "En commande" est déduit automatiquement (dès qu'au moins un article
-                    // est coché commandé) plutôt que d'être déclenché par un bouton séparé.
+                    // pas être marquée complétée : elle doit rester partiellement complétée (et sous
+                    // la responsabilité de l'agent administratif) pour que celui-ci puisse continuer
+                    // à cocher des articles et y laisser des commentaires.
                     return (
                       <>
                         {certainsRecus && (
@@ -577,7 +575,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                           </button>
                         )}
                         {!certainsRecus && !tousCommandes && (
-                          <button style={btnOrange} onClick={() => onAction(request.id, certainsCommandes ? "commandee" : "partiellement_traitee", comment, user, adminComment, rows)}>
+                          <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
                             Marquer comme partiellement complétée
                           </button>
                         )}
