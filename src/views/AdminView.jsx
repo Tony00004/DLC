@@ -17,6 +17,68 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
   const [notifDraft, setNotifDraft] = useState(() => JSON.parse(JSON.stringify(notificationConfig || {})));
   const [notifSavedMsg, setNotifSavedMsg] = useState("");
 
+  // ── Brouillons des onglets « Formulaires » / « Statuts » / « Approbateurs » / « Parcours » ──
+  // Chaque onglet regroupe ses modifications localement et ne les envoie au serveur qu'au clic
+  // sur son bouton « Enregistrer ». Les listes niveaux/matières/passion sont partagées entre les
+  // onglets Achat et Activités : un seul brouillon commun leur évite de se désynchroniser.
+  const [activeFormsDraft,  setActiveFormsDraft]  = useState(() => ({ ...(activeForms || {}) }));
+  const [niveauxDraft,      setNiveauxDraft]      = useState(() => [...niveauxList]);
+  const [matieresDraft,     setMatieresDraft]     = useState(() => [...matieresList]);
+  const [fournisseurDraft,  setFournisseurDraft]  = useState(() => [...fournisseurList]);
+  const [passionDraft,      setPassionDraft]      = useState(() => JSON.parse(JSON.stringify(passionCategories)));
+  const [messagesDraft,     setMessagesDraft]     = useState(() => ({ ...DEFAULT_FORM_MESSAGES, ...formMessages }));
+  const [serviceTypesDraft, setServiceTypesDraft] = useState(() => [...serviceTypes]);
+  const [statusDraft,       setStatusDraft]       = useState(() => ({ ...statusDefinitions }));
+  const [rulesDraft,        setRulesDraft]        = useState(() => JSON.parse(JSON.stringify(approbateurRules)));
+  const [workflowDraft,     setWorkflowDraft]     = useState(() => JSON.parse(JSON.stringify(workflowConfig)));
+  const [tabSavedMsg, setTabSavedMsg] = useState({});
+  function flashSaved(tab) {
+    setTabSavedMsg(prev => ({ ...prev, [tab]: "✓ Modifications enregistrées" }));
+    setTimeout(() => setTabSavedMsg(prev => ({ ...prev, [tab]: "" })), 3000);
+  }
+  function saveButton(tab, onClick) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 24, paddingTop: 20, borderTop: "1px solid #e5e7eb" }}>
+        <button type="button" style={S.btnPrimary} onClick={onClick}>Enregistrer</button>
+        {tabSavedMsg[tab] && <span style={{ color: COLORS.vert, fontWeight: 700, fontSize: 13 }}>{tabSavedMsg[tab]}</span>}
+      </div>
+    );
+  }
+  function saveAchat() {
+    onUpdateActiveForms(activeFormsDraft);
+    onUpdateNiveauxList(niveauxDraft);
+    onUpdateMatieresList(matieresDraft);
+    onUpdateFournisseurList(fournisseurDraft);
+    onUpdatePassionCategories(passionDraft);
+    onUpdateFormMessages(messagesDraft);
+    flashSaved("achat");
+  }
+  function saveActivite() {
+    onUpdateActiveForms(activeFormsDraft);
+    onUpdateNiveauxList(niveauxDraft);
+    onUpdateMatieresList(matieresDraft);
+    onUpdatePassionCategories(passionDraft);
+    onUpdateFormMessages(messagesDraft);
+    flashSaved("activite");
+  }
+  function saveRequisition() {
+    onUpdateActiveForms(activeFormsDraft);
+    onUpdateServiceTypes(serviceTypesDraft);
+    flashSaved("requisition");
+  }
+  function saveStatuts() {
+    onUpdateStatusDefinitions(statusDraft);
+    flashSaved("statuts");
+  }
+  function saveApprobateurs() {
+    onUpdateApprobateurRules(rulesDraft);
+    flashSaved("approbateurs");
+  }
+  function saveParcours() {
+    onUpdateWorkflowConfig(workflowDraft);
+    flashSaved("parcours");
+  }
+
   function toggleRole(userId, role) {
     setUsers((prev) =>
       prev.map((u) =>
@@ -34,24 +96,17 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
   }
 
   // Éditeur d'un message conditionnel de formulaire (affiché selon une case cochée / une
-  // réponse donnée). Champ non contrôlé (defaultValue) pour ne pas re-rendre à chaque frappe ;
-  // la clé forcée sur la valeur courante permet de le remonter si la valeur change ailleurs.
+  // réponse donnée). Champ contrôlé, lié au brouillon partagé de l'onglet — la sauvegarde
+  // se fait via le bouton « Enregistrer » unique en bas de l'onglet Achat ou Activités.
   function messageEditor(key, label, hint) {
-    const id = `msg-${key}`;
-    const current = (formMessages && formMessages[key]) ?? DEFAULT_FORM_MESSAGES[key];
+    const current = messagesDraft[key] ?? DEFAULT_FORM_MESSAGES[key];
     return (
       <div style={{ marginTop: 20 }}>
         <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{label}</h4>
         {hint && <p style={{ margin: "0 0 8px", fontSize: 12, color: COLORS.gris }}>{hint}</p>}
-        <textarea key={current} id={id} defaultValue={current} rows={3} style={{ ...S.textarea, width: "100%" }} />
+        <textarea value={current} onChange={e => setMessagesDraft(prev => ({ ...prev, [key]: e.target.value }))} rows={3} style={{ ...S.textarea, width: "100%" }} />
         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button type="button" style={S.btnPrimary} onClick={() => {
-            const val = document.getElementById(id).value;
-            if (onUpdateFormMessages) onUpdateFormMessages(prev => ({ ...prev, [key]: val }));
-          }}>Enregistrer</button>
-          <button type="button" style={S.btn} onClick={() => {
-            if (onUpdateFormMessages) onUpdateFormMessages(prev => ({ ...prev, [key]: DEFAULT_FORM_MESSAGES[key] }));
-          }}>↺ Réinitialiser</button>
+          <button type="button" style={S.btn} onClick={() => setMessagesDraft(prev => ({ ...prev, [key]: DEFAULT_FORM_MESSAGES[key] }))}>↺ Réinitialiser</button>
         </div>
       </div>
     );
@@ -104,24 +159,24 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
 
   function addPassionCategory() {
     const name = newPassionCategory.trim();
-    if (name && !passionCategories.some(c => c.name === name)) {
-      onUpdatePassionCategories(prev => [...prev, { name, subOptions: [] }]);
+    if (name && !passionDraft.some(c => c.name === name)) {
+      setPassionDraft(prev => [...prev, { name, subOptions: [] }]);
       setNewPassionCategory("");
     }
   }
   function removePassionCategory(name) {
-    onUpdatePassionCategories(prev => prev.filter(c => c.name !== name));
+    setPassionDraft(prev => prev.filter(c => c.name !== name));
   }
   function addSubOption(catName) {
     const val = (newSubOption[catName] || "").trim();
     if (!val) return;
-    onUpdatePassionCategories(prev => prev.map(c => c.name === catName
+    setPassionDraft(prev => prev.map(c => c.name === catName
       ? { ...c, subOptions: c.subOptions.includes(val) ? c.subOptions : [...c.subOptions, val] }
       : c));
     setNewSubOption(prev => ({ ...prev, [catName]: "" }));
   }
   function removeSubOption(catName, sub) {
-    onUpdatePassionCategories(prev => prev.map(c => c.name === catName
+    setPassionDraft(prev => prev.map(c => c.name === catName
       ? { ...c, subOptions: c.subOptions.filter(s => s !== sub) }
       : c));
   }
@@ -133,7 +188,7 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
           S'applique aux deux formulaires : Achat de matériel et Activités/Sorties. Une catégorie peut avoir des sous-choix (un seul sélectionnable à la fois) — laissez-la sans sous-choix pour une simple case à cocher. « Autres (précisez) » reste toujours disponible en dernier, sans configuration.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {passionCategories.map((cat) => (
+          {passionDraft.map((cat) => (
             <div key={cat.name} style={{ padding: "10px 14px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <strong style={{ fontSize: 14, flex: 1 }}>{cat.name}</strong>
@@ -410,7 +465,10 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
 
         {/* ── Onglet : Parcours des demandes ── */}
         {activeTab === "parcours" && (
-          <AdminWorkflowTab workflowConfig={workflowConfig} onUpdateWorkflowConfig={onUpdateWorkflowConfig} />
+          <div>
+            <AdminWorkflowTab workflowConfig={workflowDraft} onUpdateWorkflowConfig={setWorkflowDraft} />
+            {saveButton("parcours", saveParcours)}
+          </div>
         )}
 
         {/* ── Onglet : Définitions des statuts ── */}
@@ -433,16 +491,14 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                   <span style={{ ...S.badge(color), fontSize: 13, textAlign: "center" }}>{label}</span>
                   <input
                     style={S.input}
-                    value={statusDefinitions[key] || ""}
-                    onChange={e => onUpdateStatusDefinitions(prev => ({ ...prev, [key]: e.target.value }))}
+                    value={statusDraft[key] || ""}
+                    onChange={e => setStatusDraft(prev => ({ ...prev, [key]: e.target.value }))}
                     placeholder={`Définition du statut « ${label} »…`}
                   />
                 </div>
               ))}
             </div>
-            <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 14 }}>
-              ℹ️ Les modifications sont appliquées immédiatement pour tous les utilisateurs.
-            </p>
+            {saveButton("statuts", saveStatuts)}
           </div>
         )}
 
@@ -452,20 +508,20 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
 
           function addRule() {
             if (approbUsers.length === 0) return;
-            const newId = (approbateurRules.length > 0 ? Math.max(...approbateurRules.map(r => r.id)) : 0) + 1;
-            onUpdateApprobateurRules([...approbateurRules, { id: newId, approbateurId: approbUsers[0].id, matieres: [], niveaux: [] }]);
+            const newId = (rulesDraft.length > 0 ? Math.max(...rulesDraft.map(r => r.id)) : 0) + 1;
+            setRulesDraft(prev => [...prev, { id: newId, approbateurId: approbUsers[0].id, matieres: [], niveaux: [] }]);
           }
 
           function removeRule(id) {
-            onUpdateApprobateurRules(approbateurRules.filter(r => r.id !== id));
+            setRulesDraft(prev => prev.filter(r => r.id !== id));
           }
 
           function updateRule(id, field, value) {
-            onUpdateApprobateurRules(approbateurRules.map(r => r.id === id ? { ...r, [field]: value } : r));
+            setRulesDraft(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
           }
 
           function toggleItem(id, field, item) {
-            const rule = approbateurRules.find(r => r.id === id);
+            const rule = rulesDraft.find(r => r.id === id);
             if (!rule) return;
             const arr = rule[field];
             updateRule(id, field, arr.includes(item) ? arr.filter(x => x !== item) : [...arr, item]);
@@ -486,11 +542,11 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 ℹ️ Une règle correspond si <strong>toutes</strong> les conditions non vides sont respectées. Laisser une liste vide signifie « toutes les valeurs ». Si plusieurs règles s'appliquent, la première de la liste est utilisée. Si aucune règle ne s'applique, le demandeur sélectionne la direction manuellement.
               </div>
 
-              {approbateurRules.length === 0 && (
+              {rulesDraft.length === 0 && (
                 <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 16 }}>Aucune règle définie — les demandeurs choisissent la direction manuellement.</p>
               )}
 
-              {approbateurRules.map((rule, idx) => {
+              {rulesDraft.map((rule, idx) => {
                 const approbUser = allUsers.find(u => u.id === rule.approbateurId);
                 return (
                   <div key={rule.id} style={{ border: "1px solid #d9dee5", borderRadius: 10, padding: "18px 20px", marginBottom: 16, background: "#fafbfc" }}>
@@ -534,6 +590,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               {approbUsers.length === 0 && (
                 <p style={{ color: COLORS.rouge, fontSize: 13, marginTop: 8 }}>Aucun utilisateur avec le rôle Approbateur (A) — assignez d'abord ce rôle dans l'onglet « Gestion des droits ».</p>
               )}
+
+              {saveButton("approbateurs", saveApprobateurs)}
             </div>
           );
         })()}
@@ -543,7 +601,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
           <div>
             {sectionTitle("Modification du formulaire « Demande d'achat de matériel »", "Paramétrez les options disponibles dans ce formulaire.")}
             {(() => {
-              const isActive = activeForms ? activeForms["achat"] !== false : true;
+              const isActive = activeFormsDraft["achat"] !== false;
               const color = "#0284c7";
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb", marginBottom: 20 }}>
@@ -552,7 +610,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                     <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>{isActive ? "Les utilisateurs peuvent soumettre ce type de demande." : "Ce formulaire est désactivé — aucune nouvelle soumission n'est possible."}</div>
                   </div>
                   <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
-                    onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(prev => ({ ...prev, achat: !isActive })); }}>
+                    onClick={() => setActiveFormsDraft(prev => ({ ...prev, achat: !isActive }))}>
                     <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
                     <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                   </div>
@@ -621,8 +679,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               );
               return (
                 <>
-                  {listWidget("Niveaux disponibles", niveauxList, onUpdateNiveauxList, newNiveau, setNewNiveau)}
-                  {listWidget("Matières disponibles", matieresList, onUpdateMatieresList, newMatiere, setNewMatiere)}
+                  {listWidget("Niveaux disponibles", niveauxDraft, setNiveauxDraft, newNiveau, setNewNiveau)}
+                  {listWidget("Matières disponibles", matieresDraft, setMatieresDraft, newMatiere, setNewMatiere)}
                   <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 10 }}>
                     ℹ️ Ces listes s'appliquent aux deux formulaires : Achat de matériel et Activités/Sorties.
                   </p>
@@ -645,12 +703,12 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                     Cette liste est toujours affichée en ordre alphabétique — « {AUTRE_FOURNISSEUR} » reste protégé et demeure en dernier.
                   </p>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-                    {fournisseurList.filter(f => f !== AUTRE_FOURNISSEUR).map((f, i) => (
+                    {fournisseurDraft.filter(f => f !== AUTRE_FOURNISSEUR).map((f, i) => (
                       <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
                         <span>{f}</span>
                         <button type="button"
                           style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
-                          onClick={() => onUpdateFournisseurList(sortFournisseurs(fournisseurList.filter(x => x !== f)))}
+                          onClick={() => setFournisseurDraft(prev => sortFournisseurs(prev.filter(x => x !== f)))}
                           title="Retirer">✕</button>
                       </div>
                     ))}
@@ -661,8 +719,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                       onKeyDown={e => { if (e.key === "Enter") e.preventDefault(); }} />
                     <button type="button" style={S.btnPrimary} onClick={() => {
                       const t = newFournisseur.trim();
-                      if (t && t !== AUTRE_FOURNISSEUR && !fournisseurList.includes(t)) {
-                        onUpdateFournisseurList(sortFournisseurs([...fournisseurList, t]));
+                      if (t && t !== AUTRE_FOURNISSEUR && !fournisseurDraft.includes(t)) {
+                        setFournisseurDraft(prev => sortFournisseurs([...prev, t]));
                         setNewFournisseur("");
                       }
                     }}>+ Ajouter</button>
@@ -682,6 +740,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               {messageEditor("achatPersonnelWarning", "Message — « Demande que j'irai acheter par moi-même » = Oui")}
               {messageEditor("conferencierWarning", "Message — « Demande en lien avec un conférencier ou une conférencière » = Oui")}
             </div>
+
+            {saveButton("achat", saveAchat)}
           </div>
         )}
 
@@ -690,7 +750,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
           <div>
             {sectionTitle("Modification du formulaire « Demande d'activité et de sortie »", "Paramétrez les options disponibles dans ce formulaire.")}
             {(() => {
-              const isActive = activeForms ? activeForms["activite"] !== false : true;
+              const isActive = activeFormsDraft["activite"] !== false;
               const color = "#7c3aed";
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb", marginBottom: 20 }}>
@@ -699,7 +759,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                     <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>{isActive ? "Les utilisateurs peuvent soumettre ce type de demande." : "Ce formulaire est désactivé — aucune nouvelle soumission n'est possible."}</div>
                   </div>
                   <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
-                    onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(prev => ({ ...prev, activite: !isActive })); }}>
+                    onClick={() => setActiveFormsDraft(prev => ({ ...prev, activite: !isActive }))}>
                     <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
                     <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                   </div>
@@ -750,8 +810,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               );
               return (
                 <>
-                  {listWidget("Niveaux disponibles (Niveau(x) concerné(s))", niveauxList, onUpdateNiveauxList, newNiveau, setNewNiveau)}
-                  {listWidget("Matières disponibles (Matière(s) concernée(s))", matieresList, onUpdateMatieresList, newMatiere, setNewMatiere)}
+                  {listWidget("Niveaux disponibles (Niveau(x) concerné(s))", niveauxDraft, setNiveauxDraft, newNiveau, setNewNiveau)}
+                  {listWidget("Matières disponibles (Matière(s) concernée(s))", matieresDraft, setMatieresDraft, newMatiere, setNewMatiere)}
                   <p style={{ fontSize: 12, color: COLORS.gris, marginTop: 10 }}>
                     ℹ️ Ces listes s'appliquent aux deux formulaires : Achat de matériel et Activités/Sorties.
                   </p>
@@ -771,6 +831,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               {messageEditor("dateProcheWarning", "Message — date prévue très rapprochée (moins de 3 semaines)")}
               {messageEditor("autobusWarning", "Message — location d'un autobus scolaire ou de ville sélectionnée")}
             </div>
+
+            {saveButton("activite", saveActivite)}
           </div>
         )}
 
@@ -779,7 +841,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
           <div>
             {sectionTitle("Modification du formulaire « Demande de réquisition interne »", "Gérez les types de service disponibles dans ce formulaire.")}
             {(() => {
-              const isActive = activeForms ? activeForms["requisition"] !== false : true;
+              const isActive = activeFormsDraft["requisition"] !== false;
               const color = "#059669";
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${isActive ? color + "55" : "#e5e7eb"}`, background: isActive ? color + "08" : "#f9fafb", marginBottom: 20 }}>
@@ -788,7 +850,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                     <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>{isActive ? "Les utilisateurs peuvent soumettre ce type de demande." : "Ce formulaire est désactivé — aucune nouvelle soumission n'est possible."}</div>
                   </div>
                   <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
-                    onClick={() => { if (onUpdateActiveForms) onUpdateActiveForms(prev => ({ ...prev, requisition: !isActive })); }}>
+                    onClick={() => setActiveFormsDraft(prev => ({ ...prev, requisition: !isActive }))}>
                     <div style={{ width: 44, height: 24, borderRadius: 12, background: isActive ? color : "#d1d5db", transition: "background 0.2s" }} />
                     <div style={{ position: "absolute", top: 3, left: isActive ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                   </div>
@@ -803,12 +865,12 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-              {serviceTypes.filter(st => st !== "Autres (précisez)").map((st, i) => (
+              {serviceTypesDraft.filter(st => st !== "Autres (précisez)").map((st, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: COLORS.fond, border: "1px solid #d9dee5", borderRadius: 20, padding: "5px 14px 5px 16px", fontSize: 13 }}>
                   <span>{st}</span>
                   <button type="button"
                     style={{ background: "none", border: "none", cursor: "pointer", color: COLORS.rouge, fontWeight: 700, fontSize: 15, padding: "0 2px", lineHeight: 1 }}
-                    onClick={() => onUpdateServiceTypes(serviceTypes.filter(s => s !== st))}
+                    onClick={() => setServiceTypesDraft(prev => prev.filter(s => s !== st))}
                     title="Retirer ce type">✕</button>
                 </div>
               ))}
@@ -824,22 +886,24 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               />
               <button type="button" style={S.btnPrimary} onClick={() => {
                 const t = newServiceType.trim();
-                if (t && t !== "Autres (précisez)" && !serviceTypes.includes(t)) {
-                  const hasAutres = serviceTypes.includes("Autres (précisez)");
-                  const rest = serviceTypes.filter(s => s !== "Autres (précisez)");
-                  onUpdateServiceTypes(hasAutres ? [...rest, t, "Autres (précisez)"] : [...rest, t]);
+                if (t && t !== "Autres (précisez)" && !serviceTypesDraft.includes(t)) {
+                  setServiceTypesDraft(prev => {
+                    const hasAutres = prev.includes("Autres (précisez)");
+                    const rest = prev.filter(s => s !== "Autres (précisez)");
+                    return hasAutres ? [...rest, t, "Autres (précisez)"] : [...rest, t];
+                  });
                   setNewServiceType("");
                 }
               }}>+ Ajouter</button>
             </div>
 
             {(() => {
-              const hasAutres = serviceTypes.includes("Autres (précisez)");
+              const hasAutres = serviceTypesDraft.includes("Autres (précisez)");
               return (
                 <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: hasAutres ? "#f0fdf4" : "#f9fafb", borderRadius: 8, border: `1px solid ${hasAutres ? "#86efac" : "#e5e7eb"}` }}>
                   <span style={{ fontSize: 13, flex: 1 }}>Option <strong>« Autres (précisez) » avec champ à compléter</strong></span>
                   <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
-                    onClick={() => onUpdateServiceTypes(hasAutres ? serviceTypes.filter(s => s !== "Autres (précisez)") : [...serviceTypes, "Autres (précisez)"])}>
+                    onClick={() => setServiceTypesDraft(prev => hasAutres ? prev.filter(s => s !== "Autres (précisez)") : [...prev, "Autres (précisez)"])}>
                     <div style={{ width: 44, height: 24, borderRadius: 12, background: hasAutres ? COLORS.vert : "#d1d5db", transition: "background 0.2s" }} />
                     <div style={{ position: "absolute", top: 3, left: hasAutres ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
                   </div>
@@ -847,6 +911,8 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 </div>
               );
             })()}
+
+            {saveButton("requisition", saveRequisition)}
           </div>
         )}
 
