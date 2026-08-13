@@ -36,6 +36,7 @@ export function LoginScreen({ onLogin, showDemoAccounts = true }) {
             </div>
             <h2 style={{ margin: "0 0 6px", color: "#fff", fontSize: 24, fontWeight: 700, letterSpacing: "0.04em" }}>Connexion</h2>
             <p style={{ margin: 0, color: "rgba(255,255,255,0.82)", fontSize: 13 }}>Accès réservé au personnel de l'école</p>
+            <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Réalisé par Anthony Castonguay</p>
           </div>
           <div style={{ padding: "0 32px" }}>
           <form onSubmit={handleSubmit}>
