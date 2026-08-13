@@ -14,6 +14,8 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
   const [newPassionCategory, setNewPassionCategory] = useState("");
   const [newSubOption, setNewSubOption] = useState({});
   const [savedMsg, setSavedMsg] = useState("");
+  const [notifDraft, setNotifDraft] = useState(() => JSON.parse(JSON.stringify(notificationConfig || {})));
+  const [notifSavedMsg, setNotifSavedMsg] = useState("");
 
   function toggleRole(userId, role) {
     setUsers((prev) =>
@@ -74,23 +76,30 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
     { role: "C2", label: "Magasinier",          color: "#0891b2" },
     { role: "C3", label: "Concierge",           color: "#16a34a" },
   ];
-  const notifRoles = notificationConfig?.roles || {};
-  const requesterMode = notificationConfig?.requester?.mode || "each_stage";
+  const notifRoles = notifDraft?.roles || {};
+  const requesterMode = notifDraft?.requester?.mode || "each_stage";
 
+  // Les modifications de cet onglet restent locales (brouillon) tant que l'administrateur
+  // n'a pas cliqué sur « Enregistrer » — voir le bouton en bas de l'onglet Notifications.
   function updateRequesterMode(mode) {
-    onUpdateNotificationConfig(prev => ({ ...prev, requester: { ...prev.requester, mode } }));
+    setNotifDraft(prev => ({ ...prev, requester: { ...prev.requester, mode } }));
   }
   function updateRoleField(role, field, value) {
-    onUpdateNotificationConfig(prev => ({
+    setNotifDraft(prev => ({
       ...prev,
       roles: { ...prev.roles, [role]: { ...prev.roles[role], [field]: value } },
     }));
   }
   function updateTemplateField(kind, field, value) {
-    onUpdateNotificationConfig(prev => ({
+    setNotifDraft(prev => ({
       ...prev,
       templates: { ...prev.templates, [kind]: { ...prev.templates[kind], [field]: value } },
     }));
+  }
+  function saveNotifications() {
+    onUpdateNotificationConfig(notifDraft);
+    setNotifSavedMsg("✓ Modifications enregistrées");
+    setTimeout(() => setNotifSavedMsg(""), 3000);
   }
 
   function addPassionCategory() {
@@ -901,7 +910,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
               { kind: "approverImmediate", title: "Contenu — notification immédiate (rôles du parcours)", tokens: "{{nom}}, {{titre}}, {{role}}, {{date}}" },
               { kind: "approverDigest", title: "Contenu — récapitulatif groupé (rôles du parcours)", tokens: "{{nom}}, {{total}}, {{date}}" },
             ].map(({ kind, title, tokens }) => {
-              const tpl = (notificationConfig?.templates || {})[kind] || {};
+              const tpl = (notifDraft?.templates || {})[kind] || {};
               return (
                 <div key={kind} style={{ marginBottom: 28 }}>
                   <h4 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{title}</h4>
@@ -929,6 +938,11 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 </div>
               );
             })}
+
+            <div style={{ display: "flex", alignItems: "center", gap: 14, marginTop: 8 }}>
+              <button type="button" style={S.btnPrimary} onClick={saveNotifications}>Enregistrer</button>
+              {notifSavedMsg && <span style={{ color: COLORS.vert, fontWeight: 700, fontSize: 13 }}>{notifSavedMsg}</span>}
+            </div>
           </div>
         )}
 
