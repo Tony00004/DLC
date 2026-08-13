@@ -3,7 +3,7 @@ import { COLORS, STATUSES, REQUEST_TYPES } from "../constants";
 import { S } from "../styles";
 import { getSchoolYear, getPrixTotal } from "../utils/format";
 import { exportExcel } from "../utils/excel";
-import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta, getApprovalStages, getCreationStatus, getCreationLabel } from "../utils/workflow";
+import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta, getApprovalStages, getCreationStatus, getCreationLabel, hasC1Scope } from "../utils/workflow";
 
 // Fusionne les statuts fixes avec les étapes configurées par l'administrateur,
 // pour peupler le filtre « Statut » de la liste des demandes.
@@ -38,7 +38,7 @@ export function HistoryView({ user, requests, setView, setSelectedRequest, onDel
         var inQueue = (user.roles.includes("A") && isPendingForRole(r, "A", workflowConfig))
           || (user.roles.includes("A2") && isPendingForRole(r, "A2", workflowConfig))
           || (user.roles.includes("B") && isPendingForRole(r, "B", workflowConfig))
-          || (user.roles.includes("C1") && isPendingC1(r, workflowConfig))
+          || (hasC1Scope(user.roles, r.type) && isPendingC1(r, workflowConfig))
           || (user.roles.includes("C2") && isPendingC2(r, workflowConfig))
           || (user.roles.includes("C3") && isPendingC3(r));
         return (actedOn || inQueue) && r.authorId !== user.id;

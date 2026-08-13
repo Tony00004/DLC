@@ -5,7 +5,7 @@ import { printZone } from "../utils/print";
 import {
   getCreationStatus, getCreationLabel, getApprovalStages, statusBeforeStage, getFinalApprovalStatus,
   getAvailableAdvance, isPendingC1, isPendingC2, isPendingC3, canRoleRefuse, getActionLabel, getStatusMeta,
-  allowsMagasinier, allowsConcierge,
+  allowsMagasinier, allowsConcierge, hasC1Scope, hasAnyC1,
 } from "../utils/workflow";
 
 const FIELD_LABEL = { fontSize: 13, fontWeight: 700, color: COLORS.noir, marginBottom: 2 };
@@ -102,8 +102,9 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   // commande/réception, l'agent administratif confirme simplement si l'achat a été fait.
   const isSelfPurchase = request.type === "achat" && request.formData?.achatPersonnel === "Oui";
 
-  // Agent administratif (C1) traite achat/activite une fois la chaîne d'approbation terminée
-  const canSecretary = isPendingC1(request, workflowConfig) && (canActRole("C1") || isAdmin);
+  // Agent administratif (C1) traite achat/activite une fois la chaîne d'approbation terminée —
+  // le rôle peut être limité à un seul des deux types (voir Gestion des droits).
+  const canSecretary = isPendingC1(request, workflowConfig) && (hasC1Scope(user.roles, request.type) || isAdmin);
   // Magasinier (C2) — achat en traitement final, ou réquisition attribuée
   const canMagasinier = isPendingC2(request, workflowConfig) && (canActRole("C2") || isAdmin);
   // Concierge (C3) traite les réquisitions attribuées
@@ -119,7 +120,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   const pastApprovalChain = ["achat","activite"].includes(request.type) && (isPendingC1(request, workflowConfig) || request.status === "traitee");
   const approverBlockedByVerif = canActRole("A") && !isAdmin && pastApprovalChain;
   // Le magasinier (C2) ne peut PAS modifier — seulement consulter et commenter
-  const canEdit = (canActRole("A") || canActRole("A2") || canActRole("B") || canActRole("C1") || canActRole("C3") || isAdmin)
+  const canEdit = (canActRole("A") || canActRole("A2") || canActRole("B") || hasC1Scope(user.roles, request.type) || canActRole("C3") || isAdmin)
                   && !["traitee","refusee","annulee"].includes(request.status);
   const canCancel = isAuthor && (request.status === getCreationStatus(request.type) || approvalStages.some(s => s.id === request.status));
 
@@ -247,11 +248,11 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   ) : null)}
                 </div>
                 {request.formData._rows && request.formData._rows.length > 0 && (() => {
-                  const canManageItems = (canActRole("C1") || canActRole("C2") || isAdmin)
+                  const canManageItems = (hasC1Scope(user.roles, "achat") || canActRole("C2") || isAdmin)
                     && [finalApprovalStatus, "commandee", "partiellement_traitee", "traitee"].includes(request.status);
                   // Achat personnel (le demandeur achète lui-même) : pas de suivi commande/réception.
                   const showOrderTracking = canManageItems && !isSelfPurchase;
-                  const canManageCommandeCol = (canActRole("C1") || isAdmin) && showOrderTracking;
+                  const canManageCommandeCol = (hasC1Scope(user.roles, "achat") || isAdmin) && showOrderTracking;
                   const rows = request.formData._rows;
                   // Applique une mise à jour des articles : si elle fait changer le palier de
                   // statut (Vérifiée → En commande → Partiellement reçue → Traitée, dans les deux
@@ -495,7 +496,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   <strong style={{ fontSize: 13 }}>{label}</strong>
                   <span style={{ fontSize: 12, color: COLORS.gris, marginLeft: 8 }}>par {h.by} · {h.date}</span>
                   {h.comment && !isEditOnly && <p style={{ margin: "4px 0 0", fontSize: 13, color: "#333" }}>{h.comment}</p>}
-                  {h.adminComment && user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r)) && (
+                  {h.adminComment && (user.roles.some(r => ["A","A2","B","C2","C3","D"].includes(r)) || hasAnyC1(user.roles)) && (
                     <div style={{ marginTop: 6, padding: "6px 10px", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 4, fontSize: 12, color: "#1e40af" }}>
                       <strong>Note administrative :</strong> {h.adminComment}
                     </div>
@@ -509,7 +510,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
 
         {/* ── Provenance / code budgétaires (facultatif — activité, sortie, voyage) ── */}
         {request.type === "activite" && (() => {
-          const canEditBudget = !isTerminated && (canActRole("A") || canActRole("A2") || canActRole("B") || canActRole("C1") || isAdmin);
+          const canEditBudget = !isTerminated && (canActRole("A") || canActRole("A2") || canActRole("B") || hasC1Scope(user.roles, "activite") || isAdmin);
           const hasBudgetData = !!(request.formData?.provenanceBudgetaire || request.formData?.codeBudgetaire);
           if (!canEditBudget && !hasBudgetData) return null;
           return (

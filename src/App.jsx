@@ -3,7 +3,7 @@ import * as api from "./api";
 import { COLORS, NIVEAUX, MATIERES, DEFAULT_FORM_MESSAGES } from "./constants";
 import { S } from "./styles";
 import { getSchoolYear } from "./utils/format";
-import { cloneDefaultWorkflowConfig, getCreationStatus, isPendingForRole, isPendingC1, isPendingC2, isPendingC3 } from "./utils/workflow";
+import { cloneDefaultWorkflowConfig, getCreationStatus, isPendingForRole, isPendingC1, isPendingC2, isPendingC3, hasAnyC1, hasC1Scope } from "./utils/workflow";
 import { Topbar } from "./components/Topbar";
 import { DemoBanner } from "./components/DemoBanner";
 import { LoginScreen } from "./views/LoginScreen";
@@ -577,7 +577,7 @@ export default function App() {
       return <QueueView role="B" allRequests={requests} workflowConfig={workflowConfig} requests={requests.filter(r => isPendingForRole(r, "B", workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_B")} />;
     }
     if (view === "queue_C1") {
-      return <QueueView role="C1" allRequests={requests} workflowConfig={workflowConfig} label="Agent administratif" requests={requests.filter(r => isPendingC1(r, workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
+      return <QueueView role="C1" allRequests={requests} workflowConfig={workflowConfig} label="Agent administratif" requests={requests.filter(r => isPendingC1(r, workflowConfig) && (user.roles.includes("D") || hasC1Scope(user.roles, r.type)))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C1")} />;
     }
     if (view === "queue_C2") {
       return <QueueView role="C2" allRequests={requests} workflowConfig={workflowConfig} label="Magasinier" requests={requests.filter(r => isPendingC2(r, workflowConfig))} user={user} onAction={handleAction} onBack={() => setView("dashboard")} setSelectedRequest={setSelectedRequest} setView={setView} onSetPrevView={() => setPrevView("queue_C2")} />;
@@ -607,7 +607,7 @@ export default function App() {
             ...(user.roles.includes("A") ? [{ key: "queue_A", label: "👍 Approbateur" }] : []),
             ...(user.roles.includes("A2") ? [{ key: "queue_A2", label: "➕ Approbateur +" }] : []),
             ...(user.roles.includes("B") ? [{ key: "queue_B", label: "✅ Vérificateur" }] : []),
-            ...(user.roles.includes("C1") ? [{ key: "queue_C1", label: "📝 Agent administratif" }] : []),
+            ...(hasAnyC1(user.roles) ? [{ key: "queue_C1", label: "📝 Agent administratif" }] : []),
             ...(user.roles.includes("C2") ? [{ key: "queue_C2", label: "📦 Magasinier" }] : []),
             ...(user.roles.includes("C3") ? [{ key: "queue_C3", label: "🔧 Concierge" }] : []),
             ...(user.roles.includes("D") ? [{ key: "admin", label: "⚙️ Admin" }] : []),

@@ -4,7 +4,7 @@ import { S } from "../styles";
 import { printHTML } from "../utils/print";
 import { writeExcelFile } from "../utils/excel";
 import { getPrixTotal } from "../utils/format";
-import { ROLE_LABELS, getAvailableAdvance, canRoleRefuse, getActionLabel, getStatusMeta, getFinalApprovalStatus } from "../utils/workflow";
+import { ROLE_LABELS, getAvailableAdvance, canRoleRefuse, getActionLabel, getStatusMeta, getFinalApprovalStatus, effectiveC1Types } from "../utils/workflow";
 
 function authInfo(auth) {
   if (!auth || !auth.decision) return { label: "En attente", color: COLORS.gris, italic: true };
@@ -142,7 +142,9 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   };
 
   // La file de l'agent administratif (C1) mélange achats et activités : on la sépare en 2 catégories.
+  // Le rôle peut être limité à un seul des deux types — la carte du type non couvert est masquée.
   const isAgentQueue = role === "C1";
+  const c1Types = isAgentQueue ? (isAdmin ? ["achat", "activite"] : effectiveC1Types(user.roles)) : [];
   const activitesPendantes = isAgentQueue ? filtered.filter(r => r.type === "activite") : [];
   const achatsPendants = isAgentQueue ? filtered.filter(r => r.type === "achat") : [];
   const activitesTraitees = isAgentQueue ? traitees.filter(r => r.type === "activite") : [];
@@ -365,6 +367,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
 
       {isAgentQueue ? (
         <>
+          {c1Types.includes("activite") && (
           <div style={S.card} className="s-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Demandes d'activités et de sorties</h2>
@@ -384,7 +387,9 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
               </div>
             )}
           </div>
+          )}
 
+          {c1Types.includes("achat") && (
           <div style={S.card} className="s-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Demandes d'achat de matériel</h2>
@@ -412,6 +417,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
               </div>
             )}
           </div>
+          )}
         </>
       ) : (
         <div style={S.card} className="s-card">

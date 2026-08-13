@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { COLORS, REQUEST_TYPES, CUSTOM_EVENT_COLORS, GENERIC_EVENT_COLOR_KEYS } from "../constants";
 import { S } from "../styles";
-import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta } from "../utils/workflow";
+import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta, hasAnyC1, hasC1Scope } from "../utils/workflow";
 
 export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents, workflowConfig, onContinueDraft, onDeleteDraft, showCalendar = true }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
@@ -9,7 +9,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", dates: [{ date: "", heureDebut: "", heureFin: "" }], couleur: "cerisier" });
   const [savingEvent, setSavingEvent] = useState(false);
-  const canManageCalendar = user.roles.includes("A") || user.roles.includes("A2") || user.roles.includes("C1") || user.roles.includes("D");
+  const canManageCalendar = user.roles.includes("A") || user.roles.includes("A2") || hasAnyC1(user.roles) || user.roles.includes("D");
   const myRequests = requests.filter((r) => r.authorId === user.id && r.status !== "brouillon");
   const myDrafts = requests.filter((r) => r.authorId === user.id && r.status === "brouillon")
     .sort((a, b) => new Date(b.updatedAt || b.date) - new Date(a.updatedAt || a.date));
@@ -17,7 +17,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
   const pendingA2 = requests.filter(r => isPendingForRole(r, "A2", workflowConfig) && user.roles.includes("A2"));
   const pendingB  = requests.filter(r => isPendingForRole(r, "B", workflowConfig) && user.roles.includes("B"));
-  const pendingC1 = requests.filter(r => isPendingC1(r, workflowConfig) && user.roles.includes("C1"));
+  const pendingC1 = requests.filter(r => isPendingC1(r, workflowConfig) && hasC1Scope(user.roles, r.type));
   const pendingC2 = requests.filter(r => isPendingC2(r, workflowConfig) && user.roles.includes("C2"));
   const pendingC3 = requests.filter(r => isPendingC3(r) && user.roles.includes("C3"));
 
@@ -355,18 +355,18 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
       )}
 
       {/* Role actions — toujours visible si au moins 1 rôle exécutant */}
-      {(user.roles.some(r => ["A","A2","B","C1","C2","C3","D"].includes(r))) && (
+      {(user.roles.some(r => ["A","A2","B","C2","C3","D"].includes(r)) || hasAnyC1(user.roles)) && (
         <div style={{ ...S.card, marginBottom: 24 }} className="s-card">
           <h3 style={{ ...S.sectionTitle, marginBottom: 16 }}>Actions requises</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             {[
-              { role: "A",  label: "Approbateur",  count: pendingA.length,  color: "#0284c7", queue: "queue_A" },
-              { role: "A2", label: "Approbateur +", count: pendingA2.length, color: "#2563eb", queue: "queue_A2" },
-              { role: "B",  label: "Vérificateur", count: pendingB.length,  color: "#7c3aed", queue: "queue_B" },
-              { role: "C1", label: "Agent administratif",   count: pendingC1.length, color: "#ea580c", queue: "queue_C1" },
-              { role: "C2", label: "Magasinier",   count: pendingC2.length, color: "#0891b2", queue: "queue_C2" },
-              { role: "C3", label: "Concierge",    count: pendingC3.length, color: COLORS.vert, queue: "queue_C3" },
-            ].filter(item => user.roles.includes(item.role)).map(item => (
+              { role: "A",  label: "Approbateur",  count: pendingA.length,  color: "#0284c7", queue: "queue_A", ok: user.roles.includes("A") },
+              { role: "A2", label: "Approbateur +", count: pendingA2.length, color: "#2563eb", queue: "queue_A2", ok: user.roles.includes("A2") },
+              { role: "B",  label: "Vérificateur", count: pendingB.length,  color: "#7c3aed", queue: "queue_B", ok: user.roles.includes("B") },
+              { role: "C1", label: "Agent administratif",   count: pendingC1.length, color: "#ea580c", queue: "queue_C1", ok: hasAnyC1(user.roles) },
+              { role: "C2", label: "Magasinier",   count: pendingC2.length, color: "#0891b2", queue: "queue_C2", ok: user.roles.includes("C2") },
+              { role: "C3", label: "Concierge",    count: pendingC3.length, color: COLORS.vert, queue: "queue_C3", ok: user.roles.includes("C3") },
+            ].filter(item => item.ok).map(item => (
               <button key={item.role}
                 style={{ ...S.btn, borderColor: item.color, color: item.color, fontWeight: 700, display: "flex", alignItems: "center", gap: 8, padding: "8px 16px" }}
                 onClick={() => setView(item.queue)}>

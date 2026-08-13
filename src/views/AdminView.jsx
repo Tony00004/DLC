@@ -2,6 +2,7 @@ import { useState } from "react";
 import { COLORS, MATIERES, NIVEAUX, config, DEFAULT_FORM_MESSAGES } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
+import { effectiveC1Types } from "../utils/workflow";
 
 export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, showCalendar = true, onUpdateShowCalendar, fournisseurList = [], onUpdateFournisseurList, passionCategories = [], onUpdatePassionCategories, formMessages = DEFAULT_FORM_MESSAGES, onUpdateFormMessages }) {
   const [activeTab, setActiveTab] = useState("droits");
@@ -93,6 +94,32 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
     onUpdateRoles(users);
     setSavedMsg("✓ Modifications enregistrées");
     setTimeout(() => setSavedMsg(""), 3000);
+  }
+
+  // Pour le regroupement par colonne (clic sur un en-tête) : les deux sous-colonnes de l'agent
+  // administratif utilisent la portée effective plutôt que roles.includes(...) directement.
+  function hasRoleForSort(u, roleKey) {
+    if (roleKey === "C1_ACHAT") return effectiveC1Types(u.roles).includes("achat");
+    if (roleKey === "C1_ACTIVITE") return effectiveC1Types(u.roles).includes("activite");
+    return u.roles.includes(roleKey);
+  }
+
+  // Le rôle d'agent administratif (C1) est découpé par type de demande : achat de matériel
+  // et/ou activités et sorties. L'ancien rôle générique « C1 » (comptes jamais reconfigurés)
+  // est normalisé vers les deux codes spécifiques dès qu'on touche à la portée d'un utilisateur.
+  function toggleC1Scope(userId, type) {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const current = new Set(effectiveC1Types(u.roles));
+        if (current.has(type)) current.delete(type); else current.add(type);
+        const withoutC1 = u.roles.filter((r) => r !== "C1" && r !== "C1_ACHAT" && r !== "C1_ACTIVITE");
+        const newCodes = [];
+        if (current.has("achat")) newCodes.push("C1_ACHAT");
+        if (current.has("activite")) newCodes.push("C1_ACTIVITE");
+        return { ...u, roles: [...withoutC1, ...newCodes] };
+      })
+    );
   }
 
   // Éditeur d'un message conditionnel de formulaire (affiché selon une case cochée / une
@@ -390,7 +417,37 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                       { role: "A",  label: "Approbateur",    color: "#0284c7" },
                       { role: "A2", label: "Approbateur +",  color: "#2563eb" },
                       { role: "B",  label: "Vérificateur",   color: "#7c3aed" },
-                      { role: "C1", label: "Agent administratif",     color: "#ea580c" },
+                    ].map(r => (
+                      <th key={r.role}
+                        onClick={() => setSortRole(prev => prev === r.role ? null : r.role)}
+                        title={`Regrouper les utilisateurs « ${r.label} » en tête de liste`}
+                        style={{
+                          ...S.th, textAlign: "center", color: r.color, minWidth: 80, cursor: "pointer", userSelect: "none",
+                          background: sortRole === r.role ? r.color + "22" : S.th.background,
+                          boxShadow: sortRole === r.role ? `inset 0 -3px 0 ${r.color}` : undefined,
+                        }}>
+                        <div style={{ fontSize: 10, fontWeight: 900 }}>{r.role}{sortRole === r.role ? " ▾" : ""}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600 }}>{r.label}</div>
+                      </th>
+                    ))}
+                    {/* Agent administratif (C1) — la portée peut être limitée à un seul type. */}
+                    {[
+                      { key: "C1_ACHAT",    label: "Ag. admin. — Achat" },
+                      { key: "C1_ACTIVITE", label: "Ag. admin. — Activités" },
+                    ].map(r => (
+                      <th key={r.key}
+                        onClick={() => setSortRole(prev => prev === r.key ? null : r.key)}
+                        title={`Regrouper les utilisateurs « ${r.label} » en tête de liste`}
+                        style={{
+                          ...S.th, textAlign: "center", color: "#ea580c", minWidth: 80, cursor: "pointer", userSelect: "none",
+                          background: sortRole === r.key ? "#ea580c22" : S.th.background,
+                          boxShadow: sortRole === r.key ? "inset 0 -3px 0 #ea580c" : undefined,
+                        }}>
+                        <div style={{ fontSize: 10, fontWeight: 900 }}>C1{sortRole === r.key ? " ▾" : ""}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600 }}>{r.label}</div>
+                      </th>
+                    ))}
+                    {[
                       { role: "C2", label: "Magasinier",     color: "#0891b2" },
                       { role: "C3", label: "Concierge",      color: "#059669" },
                       { role: "D",  label: "Administrateur", color: "#dc2626" },
@@ -411,8 +468,9 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                   </tr>
                 </thead>
                 <tbody>
-                  {(sortRole ? [...users].sort((a, b) => Number(b.roles.includes(sortRole)) - Number(a.roles.includes(sortRole))) : users).map((u, i) => {
+                  {(sortRole ? [...users].sort((a, b) => Number(hasRoleForSort(b, sortRole)) - Number(hasRoleForSort(a, sortRole))) : users).map((u, i) => {
                     const isAdminUser = u.roles.includes("D");
+                    const c1Types = effectiveC1Types(u.roles);
                     return (
                       <tr key={u.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
                         <td style={S.td}>
@@ -420,7 +478,23 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                           {isAdminUser && <span style={{ marginLeft: 6, fontSize: 10, background: "#dc262618", color: "#dc2626", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>ADMIN</span>}
                         </td>
                         <td style={{ ...S.td, fontSize: 12, color: COLORS.gris }}>{u.email}@csslaval.gouv.qc.ca</td>
-                        {["A", "A2", "B", "C1", "C2", "C3", "D"].map((role) => (
+                        {["A", "A2", "B"].map((role) => (
+                          <td key={role} style={{ ...S.td, textAlign: "center" }}>
+                            <input type="checkbox" checked={u.roles.includes(role)} onChange={() => toggleRole(u.id, role)}
+                              style={{ width: 16, height: 16, cursor: "pointer" }} />
+                          </td>
+                        ))}
+                        <td style={{ ...S.td, textAlign: "center" }}>
+                          <input type="checkbox" checked={c1Types.includes("achat")} onChange={() => toggleC1Scope(u.id, "achat")}
+                            title="Gestion des demandes d'achat de matériel"
+                            style={{ width: 16, height: 16, cursor: "pointer" }} />
+                        </td>
+                        <td style={{ ...S.td, textAlign: "center" }}>
+                          <input type="checkbox" checked={c1Types.includes("activite")} onChange={() => toggleC1Scope(u.id, "activite")}
+                            title="Gestion des demandes d'activités et de sorties"
+                            style={{ width: 16, height: 16, cursor: "pointer" }} />
+                        </td>
+                        {["C2", "C3", "D"].map((role) => (
                           <td key={role} style={{ ...S.td, textAlign: "center" }}>
                             <input type="checkbox" checked={u.roles.includes(role)} onChange={() => toggleRole(u.id, role)}
                               style={{ width: 16, height: 16, cursor: "pointer" }} />

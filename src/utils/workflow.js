@@ -121,6 +121,25 @@ export function isAtFinalProcessing(type, status, workflowConfig) {
 export function isPendingC1(request, workflowConfig) {
   return ["achat", "activite"].includes(request.type) && isAtFinalProcessing(request.type, request.status, workflowConfig);
 }
+
+// ── Portée de l'agent administratif (C1) ──────────────────────────────────────
+// Le rôle C1 peut être limité à un seul type de demande (achat de matériel et/ou
+// activités et sorties). L'ancien rôle générique "C1" (comptes existants, jamais
+// reconfigurés) équivaut toujours à un accès complet aux deux types.
+export function effectiveC1Types(roles) {
+  if (!roles) return [];
+  if (roles.includes("C1")) return ["achat", "activite"];
+  const types = [];
+  if (roles.includes("C1_ACHAT")) types.push("achat");
+  if (roles.includes("C1_ACTIVITE")) types.push("activite");
+  return types;
+}
+export function hasAnyC1(roles) {
+  return effectiveC1Types(roles).length > 0;
+}
+export function hasC1Scope(roles, type) {
+  return effectiveC1Types(roles).includes(type);
+}
 export function isPendingC2(request, workflowConfig) {
   return (request.type === "achat" && isAtFinalProcessing("achat", request.status, workflowConfig))
       || (request.type === "requisition" && request.status === "validee_C2");
