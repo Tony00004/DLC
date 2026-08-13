@@ -3,7 +3,7 @@ import { COLORS, MATIERES, NIVEAUX, config, DEFAULT_FORM_MESSAGES } from "../con
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList, passionCategories = [], onUpdatePassionCategories, formMessages = DEFAULT_FORM_MESSAGES, onUpdateFormMessages }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, showCalendar = true, onUpdateShowCalendar, fournisseurList = [], onUpdateFournisseurList, passionCategories = [], onUpdatePassionCategories, formMessages = DEFAULT_FORM_MESSAGES, onUpdateFormMessages }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -233,6 +233,25 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
                 <div style={{ position: "absolute", top: 3, left: showDemoAccounts ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: showDemoAccounts ? "#b45309" : "#9ca3af", minWidth: 60, textAlign: "right" }}>{showDemoAccounts ? "Visibles" : "Masqués"}</span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 18px", borderRadius: 8, border: `1px solid ${showCalendar ? "#e5e7eb" : "#93c5fd55"}`, background: showCalendar ? "#f9fafb" : "#eff6ff", marginBottom: 24 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: showCalendar ? "#374151" : "#1d4ed8" }}>
+                  {showCalendar ? "Calendrier affiché" : "Calendrier masqué"}
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 2 }}>
+                  {showCalendar
+                    ? "Le calendrier est affiché sur le tableau de bord (page de présentation)."
+                    : "Le calendrier n'apparaît plus sur le tableau de bord."}
+                </div>
+              </div>
+              <div style={{ position: "relative", width: 44, height: 24, cursor: "pointer" }}
+                onClick={() => onUpdateShowCalendar(!showCalendar)}>
+                <div style={{ width: 44, height: 24, borderRadius: 12, background: showCalendar ? COLORS.vert : "#d1d5db", transition: "background 0.2s" }} />
+                <div style={{ position: "absolute", top: 3, left: showCalendar ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 600, color: showCalendar ? COLORS.vert : "#9ca3af", minWidth: 60, textAlign: "right" }}>{showCalendar ? "Affiché" : "Masqué"}</span>
             </div>
 
             {/* Légende des rôles — 3 colonnes */}

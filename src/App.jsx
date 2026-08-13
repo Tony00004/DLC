@@ -86,6 +86,7 @@ export default function App() {
     },
   });
   const [showDemoAccounts, setShowDemoAccounts] = useState(true);
+  const [showCalendar, setShowCalendar] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [editContext, setEditContext] = useState(null); // { request, nextStatus, comment }
   const [requests, setRequests] = useState([]);
@@ -116,6 +117,7 @@ export default function App() {
         if (settingsData.workflowConfig)      setWorkflowConfig(settingsData.workflowConfig);
         if (settingsData.notificationConfig)  setNotificationConfig(settingsData.notificationConfig);
         if (settingsData.showDemoAccounts !== undefined) setShowDemoAccounts(settingsData.showDemoAccounts);
+        if (settingsData.showCalendar !== undefined)     setShowCalendar(settingsData.showCalendar);
         setLoadError("");
       } catch (err) {
         setLoadError("Impossible de joindre le serveur DLC API (http://localhost:3001). Vérifiez qu'il est démarré, puis rechargez la page. Détail : " + err.message);
@@ -436,6 +438,7 @@ export default function App() {
   const updateWorkflowConfig    = persistSetting("workflowConfig", setWorkflowConfig);
   const updateNotificationConfig = persistSetting("notificationConfig", setNotificationConfig);
   const updateShowDemoAccounts  = persistSetting("showDemoAccounts", setShowDemoAccounts);
+  const updateShowCalendar      = persistSetting("showCalendar", setShowCalendar);
 
   if (loading) {
     return (
@@ -467,7 +470,7 @@ export default function App() {
 
   function renderView() {
     if (view === "dashboard") {
-      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} onContinueDraft={handleEdit} onDeleteDraft={handleDeleteDraft} />;
+      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} onContinueDraft={handleEdit} onDeleteDraft={handleDeleteDraft} showCalendar={showCalendar} />;
     }
     if (view === "form_achat") {
       return <FormAchat user={user} onSubmit={handleSubmitRequest} onSaveDraft={(title, formData) => handleSaveDraft({ type: "achat", title, formData })} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} fournisseurList={fournisseurList} passionCategories={passionCategories} formMessages={formMessages} />;
@@ -572,9 +575,9 @@ export default function App() {
       return <HistoryView user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} onDeleteYear={handleDeleteYear} workflowConfig={workflowConfig} />;
     }
     if (view === "admin" && user.roles.includes("D")) {
-      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} notificationConfig={notificationConfig} onUpdateNotificationConfig={updateNotificationConfig} showDemoAccounts={showDemoAccounts} onUpdateShowDemoAccounts={updateShowDemoAccounts} fournisseurList={fournisseurList} onUpdateFournisseurList={updateFournisseurList} passionCategories={passionCategories} onUpdatePassionCategories={updatePassionCategories} formMessages={formMessages} onUpdateFormMessages={updateFormMessages} />;
+      return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} notificationConfig={notificationConfig} onUpdateNotificationConfig={updateNotificationConfig} showDemoAccounts={showDemoAccounts} onUpdateShowDemoAccounts={updateShowDemoAccounts} showCalendar={showCalendar} onUpdateShowCalendar={updateShowCalendar} fournisseurList={fournisseurList} onUpdateFournisseurList={updateFournisseurList} passionCategories={passionCategories} onUpdatePassionCategories={updatePassionCategories} formMessages={formMessages} onUpdateFormMessages={updateFormMessages} />;
     }
-    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} onContinueDraft={handleEdit} onDeleteDraft={handleDeleteDraft} />;
+    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} onContinueDraft={handleEdit} onDeleteDraft={handleDeleteDraft} showCalendar={showCalendar} />;
   }
 
   return (

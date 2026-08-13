@@ -3,11 +3,11 @@ import { COLORS, REQUEST_TYPES, CUSTOM_EVENT_COLORS, GENERIC_EVENT_COLOR_KEYS } 
 import { S } from "../styles";
 import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta } from "../utils/workflow";
 
-export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents, workflowConfig, onContinueDraft, onDeleteDraft }) {
+export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents, workflowConfig, onContinueDraft, onDeleteDraft, showCalendar = true }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "cerisier" });
+  const [newEvent, setNewEvent] = useState({ title: "", dates: [{ date: "", heureDebut: "", heureFin: "" }], couleur: "cerisier" });
   const [savingEvent, setSavingEvent] = useState(false);
   const canManageCalendar = user.roles.includes("A") || user.roles.includes("A2") || user.roles.includes("C1") || user.roles.includes("D");
   const myRequests = requests.filter((r) => r.authorId === user.id && r.status !== "brouillon");
@@ -46,8 +46,8 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
         ))}
       </div>
 
-      {/* Nouvelle demande (colonne gauche) + Calendrier (colonne droite) */}
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: 24, marginBottom: 24, alignItems: "start" }} className="s-dash-main">
+      {/* Nouvelle demande (colonne gauche) + Calendrier (colonne droite, si affiché) */}
+      <div style={{ display: "grid", gridTemplateColumns: showCalendar ? "260px 1fr" : "1fr", gap: 24, marginBottom: 24, alignItems: "start" }} className="s-dash-main">
         <div style={{ ...S.card, marginBottom: 0 }} className="s-card">
           <h3 style={S.sectionTitle}>Nouvelle demande</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -67,11 +67,12 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
           </div>
         </div>
 
+        {showCalendar && (
         <div style={{ ...S.card, marginBottom: 0, padding: "18px 20px" }} className="s-card">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h3 style={{ ...S.sectionTitle, margin: 0, paddingBottom: 6 }}>Calendrier</h3>
             {canManageCalendar && (
-              <button style={{ ...S.btn, fontSize: 11, padding: "4px 10px" }} onClick={() => { setNewEvent({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "cerisier" }); setShowAddEvent(true); }}>
+              <button style={{ ...S.btn, fontSize: 11, padding: "4px 10px" }} onClick={() => { setNewEvent({ title: "", dates: [{ date: "", heureDebut: "", heureFin: "" }], couleur: "cerisier" }); setShowAddEvent(true); }}>
                 + Ajouter un événement
               </button>
             )}
@@ -176,6 +177,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
             );
           })()}
         </div>
+        )}
       </div>
 
       {/* ── Popup détail d'une journée ── */}
@@ -273,18 +275,28 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
               <input style={S.input} value={newEvent.title} onChange={e => setNewEvent(p => ({ ...p, title: e.target.value }))} placeholder="Ex : Réunion pédagogique" />
             </div>
             <div style={{ marginBottom: 12 }}>
-              <label style={S.label}>Date <span style={{ color: COLORS.rouge }}>*</span></label>
-              <input type="date" style={S.input} value={newEvent.date} onChange={e => setNewEvent(p => ({ ...p, date: e.target.value }))} />
-            </div>
-            <div style={{ ...S.grid2, marginBottom: 12 }} className="s-grid2">
-              <div>
-                <label style={S.label}>Heure de début</label>
-                <input type="time" style={S.input} value={newEvent.heureDebut} onChange={e => setNewEvent(p => ({ ...p, heureDebut: e.target.value }))} />
-              </div>
-              <div>
-                <label style={S.label}>Heure de fin</label>
-                <input type="time" style={S.input} value={newEvent.heureFin} onChange={e => setNewEvent(p => ({ ...p, heureFin: e.target.value }))} />
-              </div>
+              <label style={S.label}>Date(s) <span style={{ color: COLORS.rouge }}>*</span></label>
+              {newEvent.dates.map((d, i) => (
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
+                  <input type="date" style={{ ...S.input, flex: "1 1 130px", minWidth: 120 }} value={d.date} onChange={e => {
+                    const next = [...newEvent.dates]; next[i] = { ...d, date: e.target.value };
+                    setNewEvent(p => ({ ...p, dates: next }));
+                  }} />
+                  <input type="time" style={{ ...S.input, flex: "0 0 100px" }} value={d.heureDebut} onChange={e => {
+                    const next = [...newEvent.dates]; next[i] = { ...d, heureDebut: e.target.value };
+                    setNewEvent(p => ({ ...p, dates: next }));
+                  }} />
+                  <span style={{ fontWeight: 700, flexShrink: 0 }}>à</span>
+                  <input type="time" style={{ ...S.input, flex: "0 0 100px" }} value={d.heureFin} onChange={e => {
+                    const next = [...newEvent.dates]; next[i] = { ...d, heureFin: e.target.value };
+                    setNewEvent(p => ({ ...p, dates: next }));
+                  }} />
+                  <button type="button" style={{ ...S.btnDanger, padding: "4px 8px", fontSize: 14, flexShrink: 0 }} onClick={() => {
+                    if (newEvent.dates.length > 1) setNewEvent(p => ({ ...p, dates: p.dates.filter((_, j) => j !== i) }));
+                  }}>✕</button>
+                </div>
+              ))}
+              <button type="button" style={{ ...S.btnSmall, marginTop: 4, fontSize: 16 }} onClick={() => setNewEvent(p => ({ ...p, dates: [...p.dates, { date: "", heureDebut: "", heureFin: "" }] }))}>+</button>
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={S.label}>Couleur</label>
@@ -318,15 +330,23 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
               <button style={{ ...S.btnPrimary, opacity: savingEvent ? 0.7 : 1, cursor: savingEvent ? "not-allowed" : "pointer" }}
                 disabled={savingEvent}
                 onClick={async () => {
-                  if (!newEvent.title.trim() || !newEvent.date) { alert("Le titre et la date sont obligatoires."); return; }
+                  const datesValides = newEvent.dates.filter(d => d.date);
+                  if (!newEvent.title.trim() || datesValides.length === 0) { alert("Le titre et au moins une date sont obligatoires."); return; }
                   setSavingEvent(true);
                   try {
-                    const ev = { id: Date.now(), ...newEvent, title: newEvent.title.trim() };
-                    await onSaveCalendarEvents([...calendarEvents, ev]);
+                    // Une case + une heure par date : chaque date devient un événement distinct
+                    // (même titre, même couleur), pour permettre plusieurs dates en un seul ajout.
+                    const nouveaux = datesValides.map((d, i) => ({
+                      id: Date.now() + i,
+                      title: newEvent.title.trim(),
+                      couleur: newEvent.couleur,
+                      date: d.date, heureDebut: d.heureDebut, heureFin: d.heureFin,
+                    }));
+                    await onSaveCalendarEvents([...calendarEvents, ...nouveaux]);
                     setShowAddEvent(false);
                   } finally { setSavingEvent(false); }
                 }}>
-                {savingEvent ? "Sauvegarde…" : "Ajouter l'événement"}
+                {savingEvent ? "Sauvegarde…" : "Ajouter l'événement" + (newEvent.dates.filter(d => d.date).length > 1 ? "s" : "")}
               </button>
               <button style={S.btn} onClick={() => setShowAddEvent(false)}>Annuler</button>
             </div>
