@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
+import { COLORS, MATIERES, NIVEAUX, config, DEFAULT_FORM_MESSAGES } from "../constants";
 import { S } from "../styles";
 import { resolveApprobateur } from "../utils/approbateur";
 import { printZone } from "../utils/print";
@@ -13,7 +13,7 @@ const DEFAULT_PASSION_CATEGORIES = [
   { name: "Langue",     subOptions: [] },
 ];
 
-export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, passionCategories = DEFAULT_PASSION_CATEGORIES }) {
+export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, passionCategories = DEFAULT_PASSION_CATEGORIES, formMessages = DEFAULT_FORM_MESSAGES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
   const [form, setForm] = useState({
@@ -271,7 +271,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
                 </div>
                 {estSortieOuVoyage && (
                   <div style={{ marginTop: 8, padding: "10px 14px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 6, color: "#7a5800", fontSize: 13 }}>
-                    ⚠️ Merci de valider que {form.typeActivite === "Voyage" ? "le voyage" : "la sortie"} n'a pas lieu dans la zone grisée du calendrier scolaire.
+                    ⚠️ {(formMessages.zoneGriseeWarning || DEFAULT_FORM_MESSAGES.zoneGriseeWarning).replace("{type}", form.typeActivite === "Voyage" ? "le voyage" : "la sortie")}
                   </div>
                 )}
               </div>
@@ -312,7 +312,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
                       )}
                       {tropPres && !(d.date && d.date < today) && (
                         <div style={{ marginTop: 5, padding: "7px 12px", background: "#fff8e1", border: "1px solid #f59e0b", borderRadius: 6, color: "#7a5800", fontSize: 12 }}>
-                          ⚠️ La date de l'activité ou de la sortie est très près. Il se peut que la demande soit refusée. Merci de communiquer avec la direction.
+                          ⚠️ {formMessages.dateProcheWarning}
                         </div>
                       )}
                     </div>
@@ -430,7 +430,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
                   </select>
                   {form.typeTransport === "Location d'un autobus scolaire ou de ville" && (
                     <div style={{ marginTop: 8, padding: "10px 14px", background: "#e0f2fe", border: "1px solid #7dd3fc", borderRadius: 6, color: "#075985", fontSize: 13 }}>
-                      ℹ️ Le coût de la location d'un autobus doit être ajouté au coût de l'activité. Si la sortie se fait dans le cadre d'une passion, ces coûts doivent être inclus dans votre budget. Veuillez contacter l'agente de bureau responsable du dossier pour plus de détails.
+                      ℹ️ {formMessages.autobusWarning}
                     </div>
                   )}
                   {form.typeTransport === "Autre" && (

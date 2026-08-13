@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { COLORS, MATIERES, NIVEAUX, config } from "../constants";
+import { COLORS, MATIERES, NIVEAUX, config, DEFAULT_FORM_MESSAGES } from "../constants";
 import { S } from "../styles";
 import { AdminWorkflowTab } from "./AdminWorkflowTab";
 
-export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList, passionCategories = [], onUpdatePassionCategories }) {
+export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpdateServiceTypes, activeForms, onUpdateActiveForms, statusDefinitions = {}, onUpdateStatusDefinitions, approbateurRules = [], onUpdateApprobateurRules, niveauxList = [], matieresList = [], onUpdateNiveauxList, onUpdateMatieresList, workflowConfig, onUpdateWorkflowConfig, notificationConfig, onUpdateNotificationConfig, showDemoAccounts = true, onUpdateShowDemoAccounts, fournisseurList = [], onUpdateFournisseurList, passionCategories = [], onUpdatePassionCategories, formMessages = DEFAULT_FORM_MESSAGES, onUpdateFormMessages }) {
   const [activeTab, setActiveTab] = useState("droits");
   const [users, setUsers] = useState(allUsers.map((u) => ({ ...u })));
   const [sortRole, setSortRole] = useState(null);
@@ -29,6 +29,30 @@ export function AdminView({ onBack, allUsers, onUpdateRoles, serviceTypes, onUpd
     onUpdateRoles(users);
     setSavedMsg("✓ Modifications enregistrées");
     setTimeout(() => setSavedMsg(""), 3000);
+  }
+
+  // Éditeur d'un message conditionnel de formulaire (affiché selon une case cochée / une
+  // réponse donnée). Champ non contrôlé (defaultValue) pour ne pas re-rendre à chaque frappe ;
+  // la clé forcée sur la valeur courante permet de le remonter si la valeur change ailleurs.
+  function messageEditor(key, label, hint) {
+    const id = `msg-${key}`;
+    const current = (formMessages && formMessages[key]) ?? DEFAULT_FORM_MESSAGES[key];
+    return (
+      <div style={{ marginTop: 20 }}>
+        <h4 style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: COLORS.bleu }}>{label}</h4>
+        {hint && <p style={{ margin: "0 0 8px", fontSize: 12, color: COLORS.gris }}>{hint}</p>}
+        <textarea key={current} id={id} defaultValue={current} rows={3} style={{ ...S.textarea, width: "100%" }} />
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button type="button" style={S.btnPrimary} onClick={() => {
+            const val = document.getElementById(id).value;
+            if (onUpdateFormMessages) onUpdateFormMessages(prev => ({ ...prev, [key]: val }));
+          }}>Enregistrer</button>
+          <button type="button" style={S.btn} onClick={() => {
+            if (onUpdateFormMessages) onUpdateFormMessages(prev => ({ ...prev, [key]: DEFAULT_FORM_MESSAGES[key] }));
+          }}>↺ Réinitialiser</button>
+        </div>
+      </div>
+    );
   }
 
   const TABS = [
@@ -620,6 +644,16 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
             })()}
 
             {passionCategoriesEditor()}
+
+            {/* Messages conditionnels affichés selon les réponses données */}
+            <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid #e5e7eb" }}>
+              <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>Messages conditionnels</h4>
+              <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.gris }}>
+                Ces messages s'affichent automatiquement selon les cases cochées dans le formulaire.
+              </p>
+              {messageEditor("achatPersonnelWarning", "Message — « Demande que j'irai acheter par moi-même » = Oui")}
+              {messageEditor("conferencierWarning", "Message — « Demande en lien avec un conférencier ou une conférencière » = Oui")}
+            </div>
           </div>
         )}
 
@@ -698,6 +732,17 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
             })()}
 
             {passionCategoriesEditor()}
+
+            {/* Messages conditionnels affichés selon les réponses données */}
+            <div style={{ marginTop: 28, paddingTop: 20, borderTop: "1px solid #e5e7eb" }}>
+              <h4 style={{ margin: "0 0 4px", fontSize: 15, fontWeight: 700 }}>Messages conditionnels</h4>
+              <p style={{ margin: "0 0 4px", fontSize: 12, color: COLORS.gris }}>
+                Ces messages s'affichent automatiquement selon les cases cochées dans le formulaire.
+              </p>
+              {messageEditor("zoneGriseeWarning", "Message — avertissement zone grisée du calendrier scolaire (nature = Sortie ou Voyage)", "Utilisez « {type} » dans le texte : il sera remplacé automatiquement par « la sortie » ou « le voyage » selon le cas.")}
+              {messageEditor("dateProcheWarning", "Message — date prévue très rapprochée (moins de 3 semaines)")}
+              {messageEditor("autobusWarning", "Message — location d'un autobus scolaire ou de ville sélectionnée")}
+            </div>
           </div>
         )}
 

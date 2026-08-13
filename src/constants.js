@@ -36,6 +36,16 @@ export const REQUEST_TYPES = {
 export const MATIERES = ["Accueil","Adaptation scolaire","Anglais","Arts","Culture et citoyenneté québécoise (CCQ)","Éducation physique","Français","Mathématiques","Science","Univers social / Histoire","Non applicable","Autre"];
 export const NIVEAUX  = ["Accueil","Année transitoire (AT)","EMS","Pré-DÉP","S1","S2","S3","S4","S5","Soutien à l'apprentissage (SA)","Soutien à l'autonomie et la socialisation (SAS)","Autre","Non applicable"];
 
+// ─── Messages conditionnels des formulaires (modifiables par l'administrateur) ──
+// Affichés selon les cases cochées / réponses données dans les formulaires.
+export const DEFAULT_FORM_MESSAGES = {
+  achatPersonnelWarning: "À noter que vous devez attendre la confirmation avant de procéder à l'achat du matériel. Si vous achetez le tout avant, il se peut qu'il soit impossible de procéder à votre remboursement.",
+  conferencierWarning: "Dans un minimum de trois semaines avant la conférence, il est important que le conférencier ou la conférencière remplisse le formulaire « Déclaration relative aux antécédents judiciaires ». Pour plus d'informations, merci de communiquer avec la secrétaire de l'école.",
+  zoneGriseeWarning: "Merci de valider que {type} n'a pas lieu dans la zone grisée du calendrier scolaire.",
+  dateProcheWarning: "La date de l'activité ou de la sortie est très près. Il se peut que la demande soit refusée. Merci de communiquer avec la direction.",
+  autobusWarning: "Le coût de la location d'un autobus doit être ajouté au coût de l'activité. Si la sortie se fait dans le cadre d'une passion, ces coûts doivent être inclus dans votre budget. Veuillez contacter l'agente de bureau responsable du dossier pour plus de détails.",
+};
+
 export const CUSTOM_EVENT_COLORS = {
   mauve:      { label: "Mauve",      bg: "#ede9fe", border: "#7c3aed", dot: "#7c3aed" },
   bleu_fonce: { label: "Bleu foncé", bg: "#dbeafe", border: "#1e40af", dot: "#1e40af" },

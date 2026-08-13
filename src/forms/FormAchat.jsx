@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { COLORS, MATIERES, NIVEAUX } from "../constants";
+import { COLORS, MATIERES, NIVEAUX, DEFAULT_FORM_MESSAGES } from "../constants";
 import { S } from "../styles";
 import { resolveApprobateur } from "../utils/approbateur";
 import { printZone } from "../utils/print";
@@ -19,7 +19,7 @@ const DEFAULT_PASSION_CATEGORIES = [
   { name: "Langue",     subOptions: [] },
 ];
 
-export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS, passionCategories = DEFAULT_PASSION_CATEGORIES }) {
+export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS, passionCategories = DEFAULT_PASSION_CATEGORIES, formMessages = DEFAULT_FORM_MESSAGES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
 
@@ -281,9 +281,9 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
         <div style={{ ...S.grid2, marginTop: 16, gap: "12px 22px" }} className="s-grid2">
           {[
             { label: "Demande que j'irai acheter par moi-même", val: achatPersonnel, set: setAchatPersonnel,
-              warning: "À noter que vous devez attendre la confirmation avant de procéder à l'achat du matériel. Si vous achetez le tout avant, il se peut qu'il soit impossible de procéder à votre remboursement." },
+              warning: formMessages.achatPersonnelWarning },
             { label: "Demande en lien avec un conférencier ou une conférencière", val: conferencier, set: setConferencier,
-              warning: "Dans un minimum de trois semaines avant la conférence, il est important que le conférencier ou la conférencière remplisse le formulaire « Déclaration relative aux antécédents judiciaires ». Pour plus d'informations, merci de communiquer avec la secrétaire de l'école." },
+              warning: formMessages.conferencierWarning },
             { label: "Demande en lien avec une activité parascolaire", val: parascolaire, set: setParascolaire },
             { label: "Demande en lien avec le budget d'une concentration (passion)", val: budgetPassion, set: setBudgetPassion,
               extra: budgetPassion === "Oui" && (
