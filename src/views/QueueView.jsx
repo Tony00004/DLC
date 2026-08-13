@@ -65,6 +65,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
 
   // Demandes traitées : celles où l'utilisateur a agi (dans l'historique)
   const traitees = allRequests ? allRequests.filter(r =>
+    r.status !== "brouillon" &&
     r.history && r.history.some(h => h.by === user.name) &&
     !filtered.some(f => f.id === r.id) // pas dans la file d'attente
   ) : [];

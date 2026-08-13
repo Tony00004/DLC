@@ -3,14 +3,16 @@ import { COLORS, REQUEST_TYPES, CUSTOM_EVENT_COLORS } from "../constants";
 import { S } from "../styles";
 import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta } from "../utils/workflow";
 
-export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents, workflowConfig }) {
+export function Dashboard({ user, requests, setView, setSelectedRequest, activeForms, setPrevView, statusDefinitions = {}, calendarEvents = [], onSaveCalendarEvents, workflowConfig, onContinueDraft, onDeleteDraft }) {
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [newEvent, setNewEvent] = useState({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "mauve" });
   const [savingEvent, setSavingEvent] = useState(false);
   const canManageCalendar = user.roles.includes("C1") || user.roles.includes("D");
-  const myRequests = requests.filter((r) => r.authorId === user.id);
+  const myRequests = requests.filter((r) => r.authorId === user.id && r.status !== "brouillon");
+  const myDrafts = requests.filter((r) => r.authorId === user.id && r.status === "brouillon")
+    .sort((a, b) => new Date(b.updatedAt || b.date) - new Date(a.updatedAt || a.date));
   const pendingA  = requests.filter(r => isPendingForRole(r, "A", workflowConfig) && user.roles.includes("A")
     && (user.roles.includes("D") || !r.formData || r.formData.directionResponsable === user.name));
   const pendingA2 = requests.filter(r => isPendingForRole(r, "A2", workflowConfig) && user.roles.includes("A2"));
@@ -364,6 +366,48 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
               onClick={() => setView("history")}>
               Voir l'historique complet
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Brouillons en attente d'envoi */}
+      {myDrafts.length > 0 && (
+        <div style={{ ...S.card, background: "#fffbeb", border: "1px solid #fde68a" }} className="s-card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, color: "#92400e" }}>💾 Mes brouillons ({myDrafts.length})</h3>
+          </div>
+          <p style={{ margin: "0 0 14px", fontSize: 13, color: "#7a5800" }}>
+            Ces demandes n'ont pas encore été envoyées — reprenez-les pour les compléter et les soumettre.
+          </p>
+          <div className="s-table-wrap">
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  {["Type", "Titre", "Dernière modification", "Actions"].map((h) => (
+                    <th key={h} style={S.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {myDrafts.map((r, i) => (
+                  <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fffdf5" }}>
+                    <td style={S.td}><span style={{ fontSize: 12 }}>{REQUEST_TYPES[r.type]}</span></td>
+                    <td style={S.td}><strong>{r.title || "Brouillon sans titre"}</strong></td>
+                    <td style={S.td}>{(r.updatedAt || r.date || "").toString().slice(0, 10)}</td>
+                    <td style={S.td}>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button style={{ ...S.btnPrimary, padding: "4px 12px", fontSize: 12 }} onClick={() => onContinueDraft(r)}>
+                          Continuer
+                        </button>
+                        <button style={{ ...S.btnDanger, padding: "4px 12px", fontSize: 12 }} onClick={() => onDeleteDraft(r.id)}>
+                          Supprimer
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

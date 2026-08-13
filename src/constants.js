@@ -16,6 +16,7 @@ export const config = { coutLiberationDefault: "233.34" };
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 export const STATUSES = {
+  brouillon:             { label: "Brouillon",              color: "#94a3b8" },
   soumise:               { label: "Soumise",                color: "#64748b" },
   acceptee:              { label: "Approuvée",              color: "#0284c7" },
   acceptee2:             { label: "Approuvée (Approbateur +)", color: "#2563eb" },

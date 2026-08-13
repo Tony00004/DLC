@@ -166,6 +166,67 @@ export default function App() {
     }
   }
 
+  // Enregistre une demande en cours de rédaction sans la soumettre au circuit
+  // d'approbation — l'utilisateur pourra la reprendre plus tard depuis « Mes brouillons ».
+  async function handleSaveDraft({ type, title, formData }) {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const created = await api.createRequest({
+        type, title,
+        authorId: user.id, authorName: user.name,
+        date: today, formData,
+        status: "brouillon", historyComment: "Brouillon créé",
+      });
+      setRequests((prev) => [created, ...prev]);
+      setView("dashboard");
+    } catch (err) {
+      alert("Erreur lors de l'enregistrement du brouillon : " + err.message);
+    }
+  }
+
+  // Enregistre les dernières modifications d'un brouillon existant sans l'envoyer.
+  async function handleUpdateDraft(reqId, title, formData) {
+    try {
+      const updated = await api.updateRequest(reqId, { title, formData });
+      setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      setView("dashboard");
+    } catch (err) {
+      alert("Erreur lors de l'enregistrement du brouillon : " + err.message);
+    }
+  }
+
+  // Envoie un brouillon dans le circuit d'approbation : sauvegarde le contenu final
+  // puis fait passer le statut de « brouillon » à l'état initial normal du type de demande.
+  async function handleSendDraft(reqId, title, formData) {
+    const draft = requests.find((r) => r.id === reqId);
+    if (!draft) return;
+    const isRequisition = draft.type === "requisition";
+    const initialStatus = getCreationStatus(draft.type);
+    const historyComment = isRequisition
+      ? "Demande envoyée directement au vérificateur (réquisition interne)"
+      : "";
+    try {
+      await api.updateRequest(reqId, { title, formData });
+      const updated = await api.actionRequest(reqId, { newStatus: initialStatus, comment: historyComment, by: user.name });
+      setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      setEditContext(null);
+      setSelectedRequest(updated);
+      setView("detail");
+    } catch (err) {
+      alert("Erreur lors de l'envoi de la demande : " + err.message);
+    }
+  }
+
+  async function handleDeleteDraft(reqId) {
+    if (!window.confirm("Supprimer définitivement ce brouillon ? Cette action est irréversible.")) return;
+    try {
+      await api.deleteRequest(reqId);
+      setRequests((prev) => prev.filter((r) => r.id !== reqId));
+    } catch (err) {
+      alert("Erreur lors de la suppression du brouillon : " + err.message);
+    }
+  }
+
   async function handleAction(reqId, newStatus, comment, actionUser, adminComment = "", updatedRows = null, numerosCommande = null) {
     // Messages de confirmation selon l'action
     const confirmMessages = {
@@ -406,16 +467,16 @@ export default function App() {
 
   function renderView() {
     if (view === "dashboard") {
-      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
+      return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} activeForms={activeForms} setPrevView={setPrevView} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} onContinueDraft={handleEdit} onDeleteDraft={handleDeleteDraft} />;
     }
     if (view === "form_achat") {
-      return <FormAchat user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} fournisseurList={fournisseurList} passionCategories={passionCategories} formMessages={formMessages} />;
+      return <FormAchat user={user} onSubmit={handleSubmitRequest} onSaveDraft={(title, formData) => handleSaveDraft({ type: "achat", title, formData })} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} fournisseurList={fournisseurList} passionCategories={passionCategories} formMessages={formMessages} />;
     }
     if (view === "form_activite") {
-      return <FormActivite user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} passionCategories={passionCategories} formMessages={formMessages} />;
+      return <FormActivite user={user} onSubmit={handleSubmitRequest} onSaveDraft={(title, formData) => handleSaveDraft({ type: "activite", title, formData })} onBack={() => setView("dashboard")} allUsers={allUsers} approbateurRules={approbateurRules} niveauxList={niveauxList} matieresList={matieresList} passionCategories={passionCategories} formMessages={formMessages} />;
     }
     if (view === "form_requisition") {
-      return <FormRequisition user={user} onSubmit={handleSubmitRequest} onBack={() => setView("dashboard")} serviceTypes={serviceTypes} />;
+      return <FormRequisition user={user} onSubmit={handleSubmitRequest} onSaveDraft={(title, formData) => handleSaveDraft({ type: "requisition", title, formData })} onBack={() => setView("dashboard")} serviceTypes={serviceTypes} />;
     }
     if (view === "detail" && selectedRequest) {
       return <RequestDetail
@@ -436,14 +497,18 @@ export default function App() {
     if (view === "edit_achat" && editContext) {
       // Approbateur (rôle A ou admin) sur demande soumise → peut approuver en même temps
       const canApproveOnEdit = (user.roles.includes("A") || user.roles.includes("D")) && editContext.request.status === "soumise";
+      const isDraft = editContext.request.status === "brouillon";
       return <FormAchat
         user={user}
         allUsers={allUsers}
         initialData={editContext.request.formData}
         editMode={true}
+        isDraft={isDraft}
         onSubmit={handleSaveEdit}
+        onSaveDraft={(title, formData) => handleUpdateDraft(editContext.request.id, title, formData)}
+        onSendDraft={(title, formData) => handleSendDraft(editContext.request.id, title, formData)}
         onApprove={canApproveOnEdit ? handleSaveEditAndApprove : undefined}
-        onBack={() => { setEditContext(null); setView("detail"); }}
+        onBack={() => { setEditContext(null); setView(isDraft ? "dashboard" : "detail"); }}
         approbateurRules={approbateurRules}
         niveauxList={niveauxList}
         matieresList={matieresList}
@@ -453,13 +518,17 @@ export default function App() {
       />;
     }
     if (view === "edit_activite" && editContext) {
+      const isDraft = editContext.request.status === "brouillon";
       return <FormActivite
         user={user}
         allUsers={allUsers}
         initialData={editContext.request.formData}
         editMode={true}
+        isDraft={isDraft}
         onSubmit={handleSaveEdit}
-        onBack={() => { setEditContext(null); setView("detail"); }}
+        onSaveDraft={(title, formData) => handleUpdateDraft(editContext.request.id, title, formData)}
+        onSendDraft={(title, formData) => handleSendDraft(editContext.request.id, title, formData)}
+        onBack={() => { setEditContext(null); setView(isDraft ? "dashboard" : "detail"); }}
         approbateurRules={approbateurRules}
         niveauxList={niveauxList}
         matieresList={matieresList}
@@ -468,13 +537,17 @@ export default function App() {
       />;
     }
     if (view === "edit_requisition" && editContext) {
+      const isDraft = editContext.request.status === "brouillon";
       return <FormRequisition
         user={user}
         serviceTypes={serviceTypes}
         initialData={editContext.request.formData}
         editMode={true}
+        isDraft={isDraft}
         onSubmit={handleSaveEdit}
-        onBack={() => { setEditContext(null); setView("detail"); }}
+        onSaveDraft={(title, formData) => handleUpdateDraft(editContext.request.id, title, formData)}
+        onSendDraft={(title, formData) => handleSendDraft(editContext.request.id, title, formData)}
+        onBack={() => { setEditContext(null); setView(isDraft ? "dashboard" : "detail"); }}
       />;
     }
     if (view === "queue_A") {
@@ -501,7 +574,7 @@ export default function App() {
     if (view === "admin" && user.roles.includes("D")) {
       return <AdminView onBack={() => setView("dashboard")} allUsers={allUsers} onUpdateRoles={handleUpdateRoles} serviceTypes={serviceTypes} onUpdateServiceTypes={updateServiceTypes} activeForms={activeForms} onUpdateActiveForms={updateActiveForms} statusDefinitions={statusDefinitions} onUpdateStatusDefinitions={updateStatusDefinitions} approbateurRules={approbateurRules} onUpdateApprobateurRules={updateApprobateurRules} niveauxList={niveauxList} onUpdateNiveauxList={updateNiveauxList} matieresList={matieresList} onUpdateMatieresList={updateMatieresList} workflowConfig={workflowConfig} onUpdateWorkflowConfig={updateWorkflowConfig} notificationConfig={notificationConfig} onUpdateNotificationConfig={updateNotificationConfig} showDemoAccounts={showDemoAccounts} onUpdateShowDemoAccounts={updateShowDemoAccounts} fournisseurList={fournisseurList} onUpdateFournisseurList={updateFournisseurList} passionCategories={passionCategories} onUpdatePassionCategories={updatePassionCategories} formMessages={formMessages} onUpdateFormMessages={updateFormMessages} />;
     }
-    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} />;
+    return <Dashboard user={user} requests={requests} setView={setView} setSelectedRequest={setSelectedRequest} statusDefinitions={statusDefinitions} calendarEvents={calendarEvents} onSaveCalendarEvents={handleSaveCalendarEvents} workflowConfig={workflowConfig} onContinueDraft={handleEdit} onDeleteDraft={handleDeleteDraft} />;
   }
 
   return (

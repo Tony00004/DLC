@@ -5,7 +5,7 @@ import { DrawingZone } from "../components/DrawingZone";
 import { printZone } from "../utils/print";
 import { F } from "../components/FormField";
 
-export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode, initialData }) {
+export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode, isDraft = false, onSaveDraft, onSendDraft, initialData }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
   const [form, setForm] = useState({
@@ -19,6 +19,14 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  function buildFormData() {
+    return { ...form, drawing: form.drawing || [], typeServiceFinal: form.typeService === "Autres (précisez)" ? form.autreType : form.typeService };
+  }
+
+  function titreDemande() {
+    return form.titre.slice(0, 60) || "Demande de réquisition interne";
+  }
+
   function handleSubmit(e) {
     e.preventDefault();
     if (!form.titre.trim()) { setError("Le titre de la demande est obligatoire."); return; }
@@ -29,17 +37,25 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
     if (form.dateRealisation < today) { setError("La date de réalisation doit être aujourd'hui ou dans le futur."); return; }
     if (!form.localConcerne.trim()) { setError("Le local concerné est obligatoire."); return; }
     setError("");
-    const formDataOut = { ...form, drawing: form.drawing || [], typeServiceFinal: form.typeService === "Autres (précisez)" ? form.autreType : form.typeService };
-    if (editMode) {
+    const formDataOut = buildFormData();
+    if (isDraft) {
+      onSendDraft(titreDemande(), formDataOut);
+    } else if (editMode) {
       onSubmit(formDataOut);
     } else {
       onSubmit({
         type: "requisition",
-        title: form.titre.slice(0, 60) || "Demande de réquisition interne",
+        title: titreDemande(),
         formData: formDataOut,
       });
       setSuccess(true);
     }
+  }
+
+  // Enregistre l'état courant comme brouillon, sans validation.
+  function enregistrerBrouillon() {
+    setError("");
+    onSaveDraft(titreDemande(), buildFormData());
   }
 
   if (success) {
@@ -62,8 +78,8 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
       <button style={{ ...S.btn, marginBottom: 20 }} onClick={onBack}>← Retour</button>
       <div id="print-zone" style={S.card} className="s-card">
         <div style={{ background: COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
-          <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>{editMode ? "Modifier la réquisition interne" : "Demande de réquisition interne"}</h2>
-          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}</p>
+          <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>{isDraft ? "Reprendre le brouillon — Réquisition interne" : editMode ? "Modifier la réquisition interne" : "Demande de réquisition interne"}</h2>
+          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{isDraft ? "Complétez la demande, puis envoyez-la — ou enregistrez à nouveau comme brouillon." : editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}</p>
         </div>
 
         <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") e.preventDefault(); }}>
@@ -139,7 +155,12 @@ export function FormRequisition({ user, onSubmit, onBack, serviceTypes, editMode
 
           {error && <div style={{ ...S.error, marginTop: 16 }}>{error}</div>}
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-            <button type="submit" style={{ ...S.btnPrimary, background: editMode ? COLORS.vert : COLORS.vert }}>{editMode ? "Enregistrer les modifications" : "Envoyer la demande"}</button>
+            <button type="submit" style={{ ...S.btnPrimary, background: COLORS.vert }}>{editMode && !isDraft ? "Enregistrer les modifications" : "Envoyer la demande"}</button>
+            {(!editMode || isDraft) && (
+              <button type="button" style={{ background: "#6b7280", color: "#fff", border: "1px solid #4b5563", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={enregistrerBrouillon}>
+                💾 Enregistrer comme brouillon
+              </button>
+            )}
             {!editMode && <button type="button" style={{ background: "#04043C", color: "#fff", border: "1px solid #04043C", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => printZone()}>Imprimer</button>}
             <button type="button" style={{ background: "#23b090", color: "#fff", border: "1px solid #1a8a70", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => {
               setForm({ titre: "", typeService: "", priorite: "Normal", description: "", autreType: "", demandePar: user.name, courriel: user.email, dateDemande: today, dateRealisation: "", localConcerne: "" });

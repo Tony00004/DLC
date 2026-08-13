@@ -20,16 +20,20 @@ function buildStatusOptions(workflowConfig) {
 export function HistoryView({ user, requests, setView, setSelectedRequest, onDeleteYear, workflowConfig }) {
   const isAdmin = user.roles.includes("D");
 
+  // Les brouillons ne sont jamais de vraies demandes soumises — ils vivent uniquement
+  // dans « Mes brouillons » au tableau de bord, jamais dans l'historique.
+  var visibleRequests = requests.filter(function(r) { return r.status !== "brouillon"; });
+
   // Mes demandes (auteur)
   var mesDemandes = isAdmin
-    ? requests
-    : requests.filter(function(r) { return r.authorId === user.id; });
+    ? visibleRequests
+    : visibleRequests.filter(function(r) { return r.authorId === user.id; });
 
   // Demandes sur lesquelles j'ai agi (rôles uniquement)
   var hasRoles = user.roles.filter(function(r) { return r !== "D"; }).length > 0 || isAdmin;
   var agis = isAdmin
-    ? requests
-    : requests.filter(function(r) {
+    ? visibleRequests
+    : visibleRequests.filter(function(r) {
         var actedOn = r.history && r.history.some(function(h) { return h.by === user.name; });
         var inQueue = (user.roles.includes("A") && isPendingForRole(r, "A", workflowConfig))
           || (user.roles.includes("A2") && isPendingForRole(r, "A2", workflowConfig))

@@ -19,7 +19,7 @@ const DEFAULT_PASSION_CATEGORIES = [
   { name: "Langue",     subOptions: [] },
 ];
 
-export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS, passionCategories = DEFAULT_PASSION_CATEGORIES, formMessages = DEFAULT_FORM_MESSAGES }) {
+export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editMode, isDraft = false, onSaveDraft, onSendDraft, onApprove, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, fournisseurList = DEFAULT_FOURNISSEURS, passionCategories = DEFAULT_PASSION_CATEGORIES, formMessages = DEFAULT_FORM_MESSAGES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
 
@@ -96,6 +96,27 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
     setRows(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
   }
 
+  function buildFormData() {
+    return {
+      demandePar: user.name,
+      courriel: user.email,
+      dateDemande: fd.dateDemande || today,
+      dateSouhaitee, matiere, matiereArts, autreArt, autreMatiere,
+      niveau, autreNiveau,
+      directionResponsable: direction,
+      fournisseurPrincipal: fournisseur, autreFournisseur,
+      natureActivite: nature,
+      achatPersonnel, conferencier, parascolaire, nomActiviteParascolaire, budgetPassion, passionTypes, passionSubChoices, passionAutres,
+      total: total.toFixed(2) + " $",
+      _rows: rows,
+      _totalNum: total,
+    };
+  }
+
+  function titreDemande() {
+    return (nature || "Demande d'achat").slice(0, 60);
+  }
+
   function soumettre() {
     // Validation
     if (!dateSouhaitee) { setErreur("Veuillez indiquer la date souhaitée pour le traitement."); return; }
@@ -131,32 +152,27 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
     }
 
     setErreur("");
+    var formData = buildFormData();
 
-    var formData = {
-      demandePar: user.name,
-      courriel: user.email,
-      dateDemande: fd.dateDemande || today,
-      dateSouhaitee, matiere, matiereArts, autreArt, autreMatiere,
-      niveau, autreNiveau,
-      directionResponsable: direction,
-      fournisseurPrincipal: fournisseur, autreFournisseur,
-      natureActivite: nature,
-      achatPersonnel, conferencier, parascolaire, nomActiviteParascolaire, budgetPassion, passionTypes, passionSubChoices, passionAutres,
-      total: total.toFixed(2) + " $",
-      _rows: rows,
-      _totalNum: total,
-    };
-
-    if (editMode) {
+    if (isDraft) {
+      onSendDraft(titreDemande(), formData);
+    } else if (editMode) {
       onSubmit(formData);
     } else {
       onSubmit({
         type: "achat",
-        title: (nature || "Demande d'achat").slice(0, 60),
+        title: titreDemande(),
         formData: formData,
       });
       setSucces(true);
     }
+  }
+
+  // Enregistre l'état courant comme brouillon, sans validation — permet de reprendre
+  // la demande plus tard depuis « Mes brouillons ».
+  function enregistrerBrouillon() {
+    setErreur("");
+    onSaveDraft(titreDemande(), buildFormData());
   }
 
   // ── Page de succès ──────────────────────────────────────────────────────────
@@ -184,10 +200,10 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
       <div id="print-zone" style={S.card} className="s-card">
         <div style={{ background: editMode ? "#23b090" : COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
           <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>
-            {editMode ? "Modifier la demande d'achat" : "Demande d'achat de matériel"}
+            {isDraft ? "Reprendre le brouillon — Demande d'achat" : editMode ? "Modifier la demande d'achat" : "Demande d'achat de matériel"}
           </h2>
           <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>
-            {editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}
+            {isDraft ? "Complétez la demande, puis envoyez-la — ou enregistrez à nouveau comme brouillon." : editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}
           </p>
         </div>
 
@@ -395,11 +411,18 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
       <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
         <button
           type="button"
-          style={{ ...S.btnPrimary, background: editMode ? "#23b090" : COLORS.vert }}
+          style={{ ...S.btnPrimary, background: editMode && !isDraft ? "#23b090" : COLORS.vert }}
           onClick={soumettre}
         >
-          {editMode ? "Enregistrer les modifications" : "Envoyer la demande"}
+          {editMode && !isDraft ? "Enregistrer les modifications" : "Envoyer la demande"}
         </button>
+        {(!editMode || isDraft) && (
+          <button type="button"
+            style={{ background: "#6b7280", color: "#fff", border: "1px solid #4b5563", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }}
+            onClick={enregistrerBrouillon}>
+            💾 Enregistrer comme brouillon
+          </button>
+        )}
         {!editMode && (
           <button type="button"
             style={{ background: "#04043C", color: "#fff", border: "1px solid #04043C", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }}

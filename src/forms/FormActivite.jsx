@@ -13,7 +13,7 @@ const DEFAULT_PASSION_CATEGORIES = [
   { name: "Langue",     subOptions: [] },
 ];
 
-export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, passionCategories = DEFAULT_PASSION_CATEGORIES, formMessages = DEFAULT_FORM_MESSAGES }) {
+export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, editMode, isDraft = false, onSaveDraft, onSendDraft, approbateurRules = [], niveauxList = NIVEAUX, matieresList = MATIERES, passionCategories = DEFAULT_PASSION_CATEGORIES, formMessages = DEFAULT_FORM_MESSAGES }) {
   const today = new Date().toISOString().slice(0, 10);
   const fd = initialData || {};
   const [form, setForm] = useState({
@@ -80,23 +80,8 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
     return (st1 + st2 + st3 + transport + autre).toFixed(2);
   }
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    if (!form.nomActivite || !form.typeActivite || form.niveauxConcernes.length === 0) {
-      setError("Veuillez remplir tous les champs obligatoires.");
-      return;
-    }
-    const datesPassees = form.datesPrevues.filter(d => d.date && d.date < today);
-    if (datesPassees.length > 0) {
-      setError("Une ou plusieurs dates prévues sont dans le passé. Veuillez choisir des dates aujourd'hui ou dans le futur.");
-      return;
-    }
-    if (estSortieOuVoyage && (!form.typeTransport || !form.nomEtablissement || !form.adresseComplete || !form.personneContact || !form.telephone || !form.heureDepart || !form.heureRetour)) {
-      setError("Pour une sortie ou un voyage, veuillez remplir tous les champs obligatoires de la section Transport (type de transport, nom de l'établissement, adresse complète, personne à contacter, téléphone, heure de départ et heure de retour).");
-      return;
-    }
-    setError("");
-    const formDataOut = {
+  function buildFormData() {
+    return {
       "Nom de l'activité": form.nomActivite,
       "Type": form.typeActivite,
       "Responsable(s)": form.responsables.map(r => r.nom).join(", "),
@@ -132,12 +117,43 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
       personneContact: form.personneContact, telephone: form.telephone, poste: form.poste,
       heureDepart: form.heureDepart, heureRetour: form.heureRetour,
     };
-    if (editMode) {
+  }
+
+  function titreDemande() {
+    return form.nomActivite || "Demande d'activité";
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (!form.nomActivite || !form.typeActivite || form.niveauxConcernes.length === 0) {
+      setError("Veuillez remplir tous les champs obligatoires.");
+      return;
+    }
+    const datesPassees = form.datesPrevues.filter(d => d.date && d.date < today);
+    if (datesPassees.length > 0) {
+      setError("Une ou plusieurs dates prévues sont dans le passé. Veuillez choisir des dates aujourd'hui ou dans le futur.");
+      return;
+    }
+    if (estSortieOuVoyage && (!form.typeTransport || !form.nomEtablissement || !form.adresseComplete || !form.personneContact || !form.telephone || !form.heureDepart || !form.heureRetour)) {
+      setError("Pour une sortie ou un voyage, veuillez remplir tous les champs obligatoires de la section Transport (type de transport, nom de l'établissement, adresse complète, personne à contacter, téléphone, heure de départ et heure de retour).");
+      return;
+    }
+    setError("");
+    const formDataOut = buildFormData();
+    if (isDraft) {
+      onSendDraft(titreDemande(), formDataOut);
+    } else if (editMode) {
       onSubmit(formDataOut);
     } else {
-      onSubmit({ type: "activite", title: form.nomActivite || "Demande d'activité", formData: formDataOut });
+      onSubmit({ type: "activite", title: titreDemande(), formData: formDataOut });
       setSuccess(true);
     }
+  }
+
+  // Enregistre l'état courant comme brouillon, sans validation.
+  function enregistrerBrouillon() {
+    setError("");
+    onSaveDraft(titreDemande(), buildFormData());
   }
 
   if (success) {
@@ -169,8 +185,8 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
       <button className="no-print" style={{ ...S.btn, marginBottom: 20 }} onClick={onBack}>← Retour</button>
       <div id="print-zone" style={S.card} className="s-card">
         <div style={{ background: editMode ? "#23b090" : COLORS.bleu, margin: "-28px -32px 24px", padding: "20px 32px" }}>
-          <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>{editMode ? "Modifier la demande d'activité / sortie" : "Demande d'activités et de sorties"}</h2>
-          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}</p>
+          <h2 style={{ margin: 0, color: "#fff", fontSize: 20, fontWeight: 700 }}>{isDraft ? "Reprendre le brouillon — Activité / sortie" : editMode ? "Modifier la demande d'activité / sortie" : "Demande d'activités et de sorties"}</h2>
+          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.75)", fontSize: 13 }}>{isDraft ? "Complétez la demande, puis envoyez-la — ou enregistrez à nouveau comme brouillon." : editMode ? "Modifiez les champs souhaités, puis cliquez sur Enregistrer" : "Complétez tous les champs obligatoires (*)"}</p>
         </div>
 
         <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") e.preventDefault(); }}>
@@ -538,7 +554,12 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
 
           {error && <div style={S.error}>{error}</div>}
           <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 24, flexWrap: "wrap" }}>
-            <button type="submit" style={{ ...S.btnPrimary, background: editMode ? COLORS.vert : COLORS.vert }}>{editMode ? "Enregistrer les modifications" : "Envoyer la demande"}</button>
+            <button type="submit" style={{ ...S.btnPrimary, background: COLORS.vert }}>{editMode && !isDraft ? "Enregistrer les modifications" : "Envoyer la demande"}</button>
+            {(!editMode || isDraft) && (
+              <button type="button" style={{ background: "#6b7280", color: "#fff", border: "1px solid #4b5563", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={enregistrerBrouillon}>
+                💾 Enregistrer comme brouillon
+              </button>
+            )}
             {!editMode && <button type="button" style={{ background: "#04043C", color: "#fff", border: "1px solid #04043C", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => printZone()}>Imprimer</button>}
             {!editMode && <button type="button" style={{ background: "#23b090", color: "#fff", border: "1px solid #1a8a70", borderRadius: 6, padding: "10px 20px", fontSize: 14, cursor: "pointer", fontWeight: 700 }} onClick={() => {
               setForm({ responsables: [{ nom: user.name, courriel: user.email }], nomActivite: "", typeActivite: "", datesPrevues: [{ date: "", heureDebut: "09:15", heureFin: "15:40" }], description: "", niveauxConcernes: [], matieresConcernees: [], autreMatiere: "", autreNiveau: "", groupes: "", passion: "", passionTypes: [], passionSubChoices: {}, passionAutres: "", obligatoire: "", autresClientele: "", coutEleve: "", nbEleves: "", coutAdulte: "", nbAdultes: "", coutLiberation: config.coutLiberationDefault, nbPeriodes: "", coutTransport: "", autreMontant: "", typeTransport: "", autreTransport: "", nomEtablissement: "", adresseComplete: "", personneContact: "", telephone: "", poste: "", heureDepart: "", heureRetour: "" });
