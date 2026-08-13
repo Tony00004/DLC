@@ -49,6 +49,9 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
   const [rechercheResp, setRechercheResp] = useState("");
   const [dirAutoAssigned, setDirAutoAssigned] = useState(false);
 
+  // Voyage pose les mêmes questions qu'une sortie (transport + coûts).
+  const estSortieOuVoyage = form.typeActivite === "Sortie" || form.typeActivite === "Voyage";
+
   const approb = allUsers.filter(u => u.roles.includes("A") && !u.roles.includes("D"));
 
   // Auto-assign direction from rules when niveaux or matières selection changes
@@ -88,8 +91,8 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
       setError("Une ou plusieurs dates prévues sont dans le passé. Veuillez choisir des dates aujourd'hui ou dans le futur.");
       return;
     }
-    if (form.typeActivite === "Sortie" && (!form.typeTransport || !form.nomEtablissement || !form.adresseComplete || !form.personneContact || !form.telephone || !form.heureDepart || !form.heureRetour)) {
-      setError("Pour une sortie, veuillez remplir tous les champs obligatoires de la section Transport (type de transport, nom de l'établissement, adresse complète, personne à contacter, téléphone, heure de départ et heure de retour).");
+    if (estSortieOuVoyage && (!form.typeTransport || !form.nomEtablissement || !form.adresseComplete || !form.personneContact || !form.telephone || !form.heureDepart || !form.heureRetour)) {
+      setError("Pour une sortie ou un voyage, veuillez remplir tous les champs obligatoires de la section Transport (type de transport, nom de l'établissement, adresse complète, personne à contacter, téléphone, heure de départ et heure de retour).");
       return;
     }
     setError("");
@@ -259,16 +262,16 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
               <div style={{ marginBottom: 14 }}>
                 <label style={S.label}>Nature de la demande<span style={{ color: COLORS.rouge }}> *</span></label>
                 <div style={{ display: "flex", gap: 16 }}>
-                  {["Activité", "Sortie"].map((t) => (
+                  {["Activité", "Sortie", "Voyage"].map((t) => (
                     <label key={t} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
                       <input type="radio" name="typeActivite" value={t} checked={form.typeActivite === t} onChange={(e) => setForm({ ...form, typeActivite: e.target.value })} />
                       {t}
                     </label>
                   ))}
                 </div>
-                {form.typeActivite === "Sortie" && (
+                {estSortieOuVoyage && (
                   <div style={{ marginTop: 8, padding: "10px 14px", background: "#fff8e1", border: "1px solid #ffe082", borderRadius: 6, color: "#7a5800", fontSize: 13 }}>
-                    ⚠️ Merci de valider que la sortie n'a pas lieu dans la zone grisée du calendrier scolaire.
+                    ⚠️ Merci de valider que {form.typeActivite === "Voyage" ? "le voyage" : "la sortie"} n'a pas lieu dans la zone grisée du calendrier scolaire.
                   </div>
                 )}
               </div>
@@ -414,10 +417,10 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
             />
           )}
 
-          {/* ── Transport (sortie seulement) ── */}
-          {form.typeActivite === "Sortie" && (
+          {/* ── Transport (sortie ou voyage seulement) ── */}
+          {estSortieOuVoyage && (
             <>
-              <h3 style={{ ...S.sectionTitle, marginTop: 24 }}>Transport (sortie seulement)</h3>
+              <h3 style={{ ...S.sectionTitle, marginTop: 24 }}>Transport (sortie ou voyage seulement)</h3>
               <div style={S.grid2} className="s-grid2">
                 <div>
                   <label style={S.label}>Type de transport<span style={{ color: COLORS.rouge }}> *</span></label>
@@ -510,7 +513,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
                     </td>
                   </tr>
                 ))}
-                {form.typeActivite === "Sortie" && (
+                {estSortieOuVoyage && (
                   <tr style={{ background: "#fafafa" }}>
                     <td colSpan={2} style={{ ...S.td, textAlign: "right", fontWeight: 600, fontSize: 13 }}>Transport</td>
                     <td style={S.td}>{inputDollar(form.coutTransport, (e) => setForm({ ...form, coutTransport: e.target.value }))}</td>

@@ -23,7 +23,7 @@ function fmtDatesPrevues(list) {
 }
 
 function fmtTransport(fd) {
-  if (fd.typeActivite !== "Sortie") return "N/A";
+  if (fd.typeActivite !== "Sortie" && fd.typeActivite !== "Voyage") return "N/A";
   const parts = [];
   if (fd.typeTransport) parts.push(fd.typeTransport === "Autre" ? fd.autreTransport : fd.typeTransport);
   if (fd.nomEtablissement) parts.push(fd.nomEtablissement);
