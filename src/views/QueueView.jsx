@@ -73,6 +73,20 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   const [showTraitees, setShowTraitees] = useState(false);
   const [showTraiteesActivite, setShowTraiteesActivite] = useState(false);
   const [showTraiteesAchat, setShowTraiteesAchat] = useState(false);
+  const [traiteesTab, setTraiteesTab] = useState("achat");
+
+  // Demandes traitées (file générique A/A2/B/C2/C3), séparées par type de demande
+  // pour ne jamais mélanger achat / activité / réquisition dans un même tableau.
+  const TRAITEES_TABS = [
+    ["achat", "Achat de matériel"],
+    ["activite", "Activités et sorties"],
+    ["requisition", "Réquisition interne"],
+  ];
+  const traiteesParType = {
+    achat: traitees.filter(r => r.type === "achat"),
+    activite: traitees.filter(r => r.type === "activite"),
+    requisition: traitees.filter(r => r.type === "requisition"),
+  };
 
   // La file de l'agent administratif (C1) mélange achats et activités : on la sépare en 2 catégories.
   const isAgentQueue = role === "C1";
@@ -392,7 +406,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
             </div>
           )}
 
-          {/* ── Demandes traitées ── */}
+          {/* ── Demandes traitées, séparées par type sous forme de sous-onglets ── */}
           {traitees.length > 0 && (
             <div style={{ marginTop: 24 }}>
               <button
@@ -402,33 +416,57 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                 <span style={{ background: "#e5e7eb", color: "#6b7280", borderRadius: 12, padding: "2px 8px", fontSize: 12, fontWeight: 900 }}>{traitees.length}</span>
               </button>
               {showTraitees && (
-                <div className="s-table-wrap">
-                <table style={S.table}>
-                  <thead>
-                    <tr>{["Nº","Type","Titre","Demandeur","Montant","Statut","Date action",""].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
-                  </thead>
-                  <tbody>
-                    {traitees.map((r, i) => {
-                      const monAction = [...(r.history||[])].reverse().find(h => h.by === user.name);
-                      const st = getStatusMeta(r.type, r.status, workflowConfig);
+                <>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                    {TRAITEES_TABS.map(([key, tlabel]) => {
+                      const active = traiteesTab === key;
+                      const count = traiteesParType[key].length;
                       return (
-                        <tr key={r.id} style={{ background: i%2===0?"#fff":"#fafafa" }}>
-                          <td style={{ ...S.td, fontFamily:"monospace", fontSize:12 }}>{r.requestNumber||r.id}</td>
-                          <td style={S.td}><span style={{fontSize:12}}>{REQUEST_TYPES[r.type]}</span></td>
-                          <td style={S.td}><strong>{r.title}</strong></td>
-                          <td style={S.td}>{r.authorName}</td>
-                          <td style={S.td}>{getMontant(r)}</td>
-                          <td style={S.td}><span style={S.badge(st.color)}>{st.label}</span></td>
-                          <td style={S.td}>{monAction ? monAction.date : ""}</td>
-                          <td style={S.td}>
-                            <button style={{ ...S.btn, padding:"4px 10px", fontSize:12 }} onClick={() => goToRequest(r)}>Voir</button>
-                          </td>
-                        </tr>
+                        <button key={key}
+                          style={{
+                            padding: "7px 14px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+                            fontWeight: active ? 700 : 500,
+                            background: active ? COLORS.bleu : "#fff",
+                            color: active ? "#fff" : COLORS.noir,
+                            border: `1px solid ${active ? COLORS.bleu : "#d9dee5"}`,
+                          }}
+                          onClick={() => setTraiteesTab(key)}>
+                          {tlabel} <span style={{ opacity: 0.75, fontWeight: 500 }}>({count})</span>
+                        </button>
                       );
                     })}
-                  </tbody>
-                </table>
-                </div>
+                  </div>
+                  {traiteesParType[traiteesTab].length === 0 ? (
+                    <p style={{ color: COLORS.gris }}>Aucune demande traitée dans cette catégorie.</p>
+                  ) : (
+                    <div className="s-table-wrap">
+                    <table style={S.table}>
+                      <thead>
+                        <tr>{["Nº","Titre","Demandeur","Montant","Statut","Date action",""].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {traiteesParType[traiteesTab].map((r, i) => {
+                          const monAction = [...(r.history||[])].reverse().find(h => h.by === user.name);
+                          const st = getStatusMeta(r.type, r.status, workflowConfig);
+                          return (
+                            <tr key={r.id} style={{ background: i%2===0?"#fff":"#fafafa" }}>
+                              <td style={{ ...S.td, fontFamily:"monospace", fontSize:12 }}>{r.requestNumber||r.id}</td>
+                              <td style={S.td}><strong>{r.title}</strong></td>
+                              <td style={S.td}>{r.authorName}</td>
+                              <td style={S.td}>{getMontant(r)}</td>
+                              <td style={S.td}><span style={S.badge(st.color)}>{st.label}</span></td>
+                              <td style={S.td}>{monAction ? monAction.date : ""}</td>
+                              <td style={S.td}>
+                                <button style={{ ...S.btn, padding:"4px 10px", fontSize:12 }} onClick={() => goToRequest(r)}>Voir</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
