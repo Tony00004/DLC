@@ -47,11 +47,18 @@ export const DEFAULT_FORM_MESSAGES = {
   autobusWarning: "Le coût de la location d'un autobus doit être ajouté au coût de l'activité. Si la sortie se fait dans le cadre d'une passion, ces coûts doivent être inclus dans votre budget. Veuillez contacter l'agente de bureau responsable du dossier pour plus de détails.",
 };
 
+// Couleurs disponibles pour les événements personnalisés du calendrier — 7 couleurs
+// « libres » (affichées sans leur nom dans le sélecteur) + 2 couleurs réservées (CPE / CÉ),
+// toujours identifiées par leur nom puisqu'elles ont une signification précise.
+export const GENERIC_EVENT_COLOR_KEYS = ["cerisier", "flamant", "tomate", "citrouille", "pistache", "eucalyptus", "graphite"];
 export const CUSTOM_EVENT_COLORS = {
-  mauve:      { label: "Mauve",      bg: "#ede9fe", border: "#7c3aed", dot: "#7c3aed" },
-  bleu_fonce: { label: "Bleu foncé", bg: "#dbeafe", border: "#1e40af", dot: "#1e40af" },
-  rose:       { label: "Rose",       bg: "#fce7f3", border: "#db2777", dot: "#db2777" },
-  orange:     { label: "Orange",     bg: "#ffedd5", border: "#ea580c", dot: "#ea580c" },
-  turquoise:  { label: "Turquoise",  bg: "#ccfbf1", border: "#0d9488", dot: "#0d9488" },
-  gris:       { label: "Gris",       bg: "#f3f4f6", border: "#6b7280", dot: "#6b7280" },
+  cerisier:   { label: "Cerisier",     bg: "#fce4ec", border: "#ad1457", dot: "#ad1457" },
+  flamant:    { label: "Flamant rose", bg: "#fdeae7", border: "#e67c73", dot: "#e67c73" },
+  tomate:     { label: "Tomate",       bg: "#fdecea", border: "#d93025", dot: "#d93025" },
+  citrouille: { label: "Citrouille",   bg: "#fef3e6", border: "#e8710a", dot: "#e8710a" },
+  pistache:   { label: "Pistache",     bg: "#eef6e3", border: "#7cb342", dot: "#7cb342" },
+  eucalyptus: { label: "Eucalyptus",   bg: "#e3f5f1", border: "#159e8a", dot: "#159e8a" },
+  graphite:   { label: "Graphite",     bg: "#eceff1", border: "#616161", dot: "#616161" },
+  cpe:        { label: "CPE",          bg: "#dbeafe", border: "#1e40af", dot: "#1e40af" },
+  ce:         { label: "CÉ",           bg: "#ede9fe", border: "#7c3aed", dot: "#7c3aed" },
 };

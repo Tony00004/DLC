@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { COLORS, REQUEST_TYPES, CUSTOM_EVENT_COLORS } from "../constants";
+import { COLORS, REQUEST_TYPES, CUSTOM_EVENT_COLORS, GENERIC_EVENT_COLOR_KEYS } from "../constants";
 import { S } from "../styles";
 import { isPendingForRole, isPendingC1, isPendingC2, isPendingC3, getStatusMeta } from "../utils/workflow";
 
@@ -7,9 +7,9 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
   const [calMonth, setCalMonth] = useState(() => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), 1); });
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAddEvent, setShowAddEvent] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "mauve" });
+  const [newEvent, setNewEvent] = useState({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "cerisier" });
   const [savingEvent, setSavingEvent] = useState(false);
-  const canManageCalendar = user.roles.includes("C1") || user.roles.includes("D");
+  const canManageCalendar = user.roles.includes("A") || user.roles.includes("A2") || user.roles.includes("C1") || user.roles.includes("D");
   const myRequests = requests.filter((r) => r.authorId === user.id && r.status !== "brouillon");
   const myDrafts = requests.filter((r) => r.authorId === user.id && r.status === "brouillon")
     .sort((a, b) => new Date(b.updatedAt || b.date) - new Date(a.updatedAt || a.date));
@@ -71,7 +71,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
             <h3 style={{ ...S.sectionTitle, margin: 0, paddingBottom: 6 }}>Calendrier</h3>
             {canManageCalendar && (
-              <button style={{ ...S.btn, fontSize: 11, padding: "4px 10px" }} onClick={() => { setNewEvent({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "mauve" }); setShowAddEvent(true); }}>
+              <button style={{ ...S.btn, fontSize: 11, padding: "4px 10px" }} onClick={() => { setNewEvent({ title: "", date: "", heureDebut: "", heureFin: "", couleur: "cerisier" }); setShowAddEvent(true); }}>
                 + Ajouter un événement
               </button>
             )}
@@ -166,10 +166,11 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
 
                 {/* Légende */}
                 <div style={{ display: "flex", gap: 12, marginTop: 10, fontSize: 10, color: COLORS.gris, flexWrap: "wrap" }}>
-                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#fef9c3", border: "1px solid #d97706", borderRadius: 2, marginRight: 4 }} />Activité en cours d'autorisation</span>
-                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#dcfce7", border: "1px solid #008c4a", borderRadius: 2, marginRight: 4 }} />Activité complétée</span>
-                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#f3f4f6", border: "1px solid #e5e7eb", borderRadius: 2, marginRight: 4 }} />Fin de semaine</span>
-                  <span><span style={{ display: "inline-block", width: 7, height: 7, background: "#7c3aed", borderRadius: "50%", marginRight: 4 }} />Événement</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#fef9c3", border: "1px solid #d97706", borderRadius: 2, marginRight: 4 }} />Activité ou sortie en attente d'autorisation</span>
+                  <span><span style={{ display: "inline-block", width: 8, height: 8, background: "#dcfce7", border: "1px solid #008c4a", borderRadius: 2, marginRight: 4 }} />Activité ou sortie</span>
+                  <span><span style={{ display: "inline-block", width: 7, height: 7, background: CUSTOM_EVENT_COLORS.cpe.dot, borderRadius: "50%", marginRight: 4 }} />CPE</span>
+                  <span><span style={{ display: "inline-block", width: 7, height: 7, background: CUSTOM_EVENT_COLORS.ce.dot, borderRadius: "50%", marginRight: 4 }} />CÉ</span>
+                  <span>Autres couleurs : Évènements personnalisés</span>
                 </div>
               </>
             );
@@ -226,7 +227,7 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
                 <div style={{ marginBottom: 8 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.gris, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>Événements</div>
                   {eventsDuJour.map(ev => {
-                    const col = CUSTOM_EVENT_COLORS[ev.couleur] || CUSTOM_EVENT_COLORS.gris;
+                    const col = CUSTOM_EVENT_COLORS[ev.couleur] || CUSTOM_EVENT_COLORS.graphite;
                     return (
                       <div key={ev.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", marginBottom: 8, background: col.bg, border: `1px solid ${col.border}`, borderRadius: 8 }}>
                         <div>
@@ -287,15 +288,29 @@ export function Dashboard({ user, requests, setView, setSelectedRequest, activeF
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={S.label}>Couleur</label>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {Object.entries(CUSTOM_EVENT_COLORS).map(([key, col]) => (
-                  <button key={key} title={col.label}
-                    onClick={() => setNewEvent(p => ({ ...p, couleur: key }))}
-                    style={{ width: 32, height: 32, borderRadius: "50%", background: col.dot, border: newEvent.couleur === key ? `3px solid #1e293b` : `2px solid ${col.dot}`, cursor: "pointer", flexShrink: 0 }} />
-                ))}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                {GENERIC_EVENT_COLOR_KEYS.map((key) => {
+                  const col = CUSTOM_EVENT_COLORS[key];
+                  return (
+                    <button key={key} type="button" title={col.label}
+                      onClick={() => setNewEvent(p => ({ ...p, couleur: key }))}
+                      style={{ width: 32, height: 32, borderRadius: "50%", background: col.dot, border: newEvent.couleur === key ? "3px solid #1e293b" : `2px solid ${col.dot}`, cursor: "pointer", flexShrink: 0 }} />
+                  );
+                })}
               </div>
-              <div style={{ fontSize: 12, color: COLORS.gris, marginTop: 6 }}>
-                Sélectionné : <strong>{CUSTOM_EVENT_COLORS[newEvent.couleur]?.label}</strong>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {["cpe", "ce"].map((key) => {
+                  const col = CUSTOM_EVENT_COLORS[key];
+                  const active = newEvent.couleur === key;
+                  return (
+                    <button key={key} type="button"
+                      onClick={() => setNewEvent(p => ({ ...p, couleur: key }))}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", borderRadius: 20, cursor: "pointer", background: active ? col.bg : "#fff", border: `1.5px solid ${active ? col.border : "#d9dee5"}` }}>
+                      <span style={{ width: 14, height: 14, borderRadius: "50%", background: col.dot, flexShrink: 0 }} />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: active ? col.border : COLORS.gris }}>{col.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
