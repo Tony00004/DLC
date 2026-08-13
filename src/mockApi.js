@@ -118,12 +118,13 @@ function findRequest(id) {
   return request;
 }
 
-export async function actionRequest(id, { newStatus, comment, adminComment, by, updatedRows }) {
+export async function actionRequest(id, { newStatus, comment, adminComment, by, updatedRows, numerosCommande }) {
   await delay();
   if (!newStatus || !by) throw new Error("newStatus et by sont requis");
   const request = findRequest(id);
   request.status = newStatus;
   if (updatedRows) request.formData._rows = clone(updatedRows);
+  if (numerosCommande) request.formData.numerosCommande = clone(numerosCommande);
   request.history.push({ status: newStatus, by, date: today(), comment: comment || "", adminComment: adminComment || "" });
   return clone(request);
 }

@@ -164,7 +164,7 @@ export default function App() {
     }
   }
 
-  async function handleAction(reqId, newStatus, comment, actionUser, adminComment = "", updatedRows = null) {
+  async function handleAction(reqId, newStatus, comment, actionUser, adminComment = "", updatedRows = null, numerosCommande = null) {
     // Messages de confirmation selon l'action
     const confirmMessages = {
       acceptee:   "Confirmer l'approbation de cette demande ?",
@@ -185,7 +185,7 @@ export default function App() {
     if (!window.confirm(confirmMsg)) return;
 
     try {
-      const updated = await api.actionRequest(reqId, { newStatus, comment, adminComment, by: actionUser.name, updatedRows });
+      const updated = await api.actionRequest(reqId, { newStatus, comment, adminComment, by: actionUser.name, updatedRows, numerosCommande });
       setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
       // Ne change pas de vue : si l'action vient de la fiche détail, selectedRequest correspond déjà
       // à reqId et se met à jour en place ; si elle vient d'un tableau (file d'attente), on reste sur

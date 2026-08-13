@@ -53,10 +53,10 @@ const httpApi = {
   createRequest(data) {
     return request("/requests", { method: "POST", body: JSON.stringify(data) });
   },
-  actionRequest(id, { newStatus, comment, adminComment, by, updatedRows }) {
+  actionRequest(id, { newStatus, comment, adminComment, by, updatedRows, numerosCommande }) {
     return request(`/requests/${id}/action`, {
       method: "PATCH",
-      body: JSON.stringify({ newStatus, comment, adminComment, by, updatedRows }),
+      body: JSON.stringify({ newStatus, comment, adminComment, by, updatedRows, numerosCommande }),
     });
   },
   updateItems(id, updatedRows) {

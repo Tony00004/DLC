@@ -30,6 +30,24 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
   const [ceLocal,  setCeLocal]  = useState(request.formData?.ceAuth  || { decision: null, date: "", comment: "" });
   const [savingAuth, setSavingAuth] = useState(false);
 
+  // Numéros de commande (facultatifs) — saisis par la vérificatrice ou le vérificateur au
+  // moment de vérifier une demande d'achat, un par provenance si les produits viennent de
+  // fournisseurs différents.
+  const [numerosCommande, setNumerosCommande] = useState(
+    request.formData?.numerosCommande && request.formData.numerosCommande.length > 0
+      ? request.formData.numerosCommande.map(n => ({ ...n }))
+      : [{ provenance: "", numero: "" }]
+  );
+  function changerNumeroCommande(idx, champ, val) {
+    setNumerosCommande(prev => prev.map((n, i) => i === idx ? { ...n, [champ]: val } : n));
+  }
+  function ajouterNumeroCommande() {
+    setNumerosCommande(prev => [...prev, { provenance: "", numero: "" }]);
+  }
+  function supprimerNumeroCommande(idx) {
+    setNumerosCommande(prev => prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev);
+  }
+
   const canActRole = (role) => user.roles.includes(role);
   const isAdmin = user.roles.includes("D");
   const isAuthor = request.authorId === user.id;
@@ -176,6 +194,16 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   <div style={{ marginTop: 8, marginBottom: 12 }}>
                     <div style={FIELD_LABEL}>Nature de la demande</div>
                     <div style={{ fontSize: 14, padding: "6px 8px", background: "#f9fafb", borderRadius: 4, marginTop: 4 }}>{request.formData.natureActivite}</div>
+                  </div>
+                )}
+                {request.formData.numerosCommande && request.formData.numerosCommande.length > 0 && (
+                  <div style={{ marginTop: 8, marginBottom: 12 }}>
+                    <div style={FIELD_LABEL}>Numéro(s) de commande</div>
+                    <div style={{ fontSize: 14, padding: "6px 8px", background: "#f9fafb", borderRadius: 4, marginTop: 4 }}>
+                      {request.formData.numerosCommande.map((n, idx) => (
+                        <div key={idx}>{n.provenance ? n.provenance + " — " : ""}{n.numero}</div>
+                      ))}
+                    </div>
                   </div>
                 )}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 22px", marginBottom: 12 }} className="s-grid2">
@@ -551,12 +579,37 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
               )}
             </div>
 
+            {/* ── Numéro(s) de commande (facultatif) — saisi par la vérificatrice / le vérificateur ── */}
+            {request.type === "achat" && advance && advance.stage.role === "B" && (
+              <div style={{ marginBottom: 14, padding: "12px 14px", background: "#eff6ff", border: "1px solid #93c5fd", borderRadius: 8 }}>
+                <label style={{ ...S.label, color: COLORS.bleu, marginBottom: 8, display: "block" }}>
+                  Numéro(s) de commande (facultatif — un par provenance si les produits viennent de fournisseurs différents)
+                </label>
+                {numerosCommande.map((n, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                    <input style={{ ...S.input, flex: 1 }} placeholder="Provenance (ex. : Amazon, Costco…)" value={n.provenance} onChange={(e) => changerNumeroCommande(idx, "provenance", e.target.value)} />
+                    <input style={{ ...S.input, flex: 1 }} placeholder="Numéro de commande" value={n.numero} onChange={(e) => changerNumeroCommande(idx, "numero", e.target.value)} />
+                    {numerosCommande.length > 1 && (
+                      <button style={{ background: "none", border: "none", color: "#b42318", cursor: "pointer", fontSize: 16, padding: "0 6px" }} onClick={() => supprimerNumeroCommande(idx)} title="Retirer">✕</button>
+                    )}
+                  </div>
+                ))}
+                <button style={{ ...S.btn, fontSize: 12, padding: "6px 12px" }} onClick={ajouterNumeroCommande}>+ Ajouter un numéro de commande</button>
+              </div>
+            )}
+
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
 
               {/* ── Étape d'approbation courante (rôle et libellé définis par la chaîne configurée) ── */}
               {advance && !(request.type === "requisition" && isFinalApprovalStage) && (
                 <>
-                  <button style={btnVert} onClick={() => onAction(request.id, advance.stage.id, comment, user, adminComment)}>
+                  <button style={btnVert} onClick={() => {
+                    var isVerifAchat = request.type === "achat" && advance.stage.role === "B";
+                    var cleaned = isVerifAchat
+                      ? numerosCommande.filter(n => n.provenance.trim() !== "" || n.numero.trim() !== "")
+                      : null;
+                    onAction(request.id, advance.stage.id, comment, user, adminComment, undefined, cleaned && cleaned.length > 0 ? cleaned : undefined);
+                  }}>
                     {getActionLabel(advance.stage)}
                   </button>
                   {refusableNow && <button style={btnRouge} onClick={() => onAction(request.id, "refusee", comment, user, adminComment)}>Refuser</button>}
