@@ -23,7 +23,23 @@ function passionSummary(fd) {
   }).join(", ");
 }
 
-export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onSaveBudget, onReactivate, workflowConfig }) {
+// Statut d'une demande d'achat déduit automatiquement des cases commandé/reçu cochées sur ses
+// articles — aucune action manuelle n'est requise : cocher une case met le statut à jour.
+function computeAchatItemsStatus(rows) {
+  if (!rows || rows.length === 0) return null;
+  if (rows.every(r => r.recu)) return "traitee";
+  if (rows.some(r => r.recu)) return "partiellement_traitee";
+  if (rows.some(r => r.commande)) return "commandee";
+  return "validee";
+}
+const ACHAT_STATUS_COMMENT = {
+  traitee:               "Tous les articles ont été reçus — demande complétée automatiquement.",
+  partiellement_traitee: "Réception partielle enregistrée automatiquement.",
+  commandee:              "Articles marqués comme commandés — statut mis à jour automatiquement.",
+  validee:                "Aucun article commandé ou reçu — statut ramené à Vérifiée.",
+};
+
+export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onAutoStatus, onSaveAuthorizations, onSaveBudget, onReactivate, workflowConfig }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
   const [cpeLocal, setCpeLocal] = useState(request.formData?.cpeAuth || { decision: null, date: "", comment: "" });
@@ -237,10 +253,21 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   const showOrderTracking = canManageItems && !isSelfPurchase;
                   const canManageCommandeCol = (canActRole("C1") || isAdmin) && showOrderTracking;
                   const rows = request.formData._rows;
+                  // Applique une mise à jour des articles : si elle fait changer le palier de
+                  // statut (Vérifiée → En commande → Partiellement reçue → Traitée, dans les deux
+                  // sens), le nouveau statut est enregistré automatiquement, sans confirmation.
+                  function applyRowsUpdate(updated) {
+                    const target = computeAchatItemsStatus(updated);
+                    if (target && target !== request.status && onAutoStatus) {
+                      onAutoStatus(request.id, updated, target, ACHAT_STATUS_COMMENT[target]);
+                    } else if (onUpdateItems) {
+                      onUpdateItems(request.id, updated);
+                    }
+                  }
                   function toggleItem(idx, field) {
                     if (!showOrderTracking) return;
                     const updated = rows.map((r, i) => i === idx ? { ...r, [field]: !r[field] } : r);
-                    if (onUpdateItems) onUpdateItems(request.id, updated);
+                    applyRowsUpdate(updated);
                   }
                   return (
                     <div style={{ marginTop: 16 }}>
@@ -310,7 +337,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                                     checked={rows.length > 0 && rows.every(r => r.commande)}
                                     onChange={e => {
                                       const val = e.target.checked;
-                                      if (onUpdateItems) onUpdateItems(request.id, rows.map(r => ({ ...r, commande: val, recu: val ? r.recu : false })));
+                                      applyRowsUpdate(rows.map(r => ({ ...r, commande: val, recu: val ? r.recu : false })));
                                     }}
                                     style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#0284c7" }} />
                                 </td>
@@ -322,7 +349,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                                     checked={rows.length > 0 && rows.every(r => r.recu)}
                                     onChange={e => {
                                       const val = e.target.checked;
-                                      if (onUpdateItems) onUpdateItems(request.id, rows.map(r => ({ ...r, recu: val })));
+                                      applyRowsUpdate(rows.map(r => ({ ...r, recu: val })));
                                     }}
                                     style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#059669" }} />
                                 </td>
@@ -333,7 +360,7 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                       </div>
                       {showOrderTracking && rows.every(r => r.recu) && rows.length > 0 && (
                         <div style={{ marginTop: 10, padding: "10px 14px", background: "#f0fdf4", border: "1px solid #86efac", borderRadius: 8, color: "#166534", fontSize: 13, fontWeight: 600 }}>
-                          ✅ Tous les articles ont été reçus à l'école. Vous pouvez marquer la demande comme complétée.
+                          ✅ Tous les articles ont été reçus à l'école — la demande a été marquée comme complétée automatiquement.
                         </div>
                       )}
                       {isSelfPurchase && canSecretary && (
@@ -686,70 +713,18 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                 </>
               )}
 
-              {/* ── Agent administratif (C1) — achat et activité ── */}
-              {canSecretary && (
-                <>
-                  {/* Achat personnel : la confirmation Oui/Non (affichée avec le tableau des articles)
-                      remplace les boutons de suivi commande/réception. */}
-                  {request.type === "achat" && !isSelfPurchase && request.formData?._rows && (() => {
-                    const rows = request.formData._rows;
-                    const tousRecus = rows.length > 0 && rows.every(r => r.recu);
-                    const certainsRecus = rows.some(r => r.recu) && !tousRecus;
-                    const certainsCommandes = rows.some(r => r.commande);
-                    // Seule la réception complète permet de marquer la demande comme traitée.
-                    // Avant ça, le statut reflète la progression : "En commande" dès qu'au moins un
-                    // article est coché commandé, puis "Partiellement complétée" dès qu'au moins un
-                    // article est coché reçu (même partiellement commandé) — pour que l'agent
-                    // administratif ou le magasinier puisse la marquer traitée à la réception complète.
-                    if (tousRecus) {
-                      return (
-                        <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
-                          Confirmer réception complète et compléter
-                        </button>
-                      );
-                    }
-                    if (certainsRecus) {
-                      return (
-                        <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
-                          Enregistrer réception partielle
-                        </button>
-                      );
-                    }
-                    if (certainsCommandes) {
-                      return (
-                        <button style={btnOrange} onClick={() => onAction(request.id, "commandee", comment, user, adminComment, rows)}>
-                          Marquer comme en commande
-                        </button>
-                      );
-                    }
-                    return (
-                      <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
-                        Marquer comme partiellement complétée
-                      </button>
-                    );
-                  })()}
-                  {request.type === "activite" && (
-                    <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
-                      Marquer comme complétée
-                    </button>
-                  )}
-                </>
+              {/* ── Agent administratif (C1) — achat et activité ──
+                  Pour l'achat (non personnel), le statut découle désormais automatiquement des
+                  cases commandé/reçu cochées dans le tableau des articles (voir applyRowsUpdate
+                  ci-dessus) : aucun bouton de confirmation n'est nécessaire ici. */}
+              {canSecretary && request.type === "activite" && (
+                <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment)}>
+                  Marquer comme complétée
+                </button>
               )}
 
-              {/* ── Magasinier (C2) — achat validée, en commande ou partiellement complétée ── */}
-              {canMagasinier && !canSecretary && (() => {
-                const rows = request.formData?._rows || [];
-                const tousRecus = rows.length > 0 && rows.every(r => r.recu);
-                return tousRecus ? (
-                  <button style={btnVert} onClick={() => onAction(request.id, "traitee", comment, user, adminComment, rows)}>
-                    Confirmer réception complète et compléter
-                  </button>
-                ) : (
-                  <button style={btnOrange} onClick={() => onAction(request.id, "partiellement_traitee", comment, user, adminComment, rows)}>
-                    Marquer comme partiellement complétée
-                  </button>
-                );
-              })()}
+              {/* ── Magasinier (C2) — le statut d'un achat découle aussi automatiquement des cases
+                  cochées ci-dessus ; aucune action manuelle n'est requise ici. ── */}
 
               {/* ── Concierge (C3) — réquisition interne ── */}
               {canConcierge && (

@@ -52,7 +52,7 @@ export function writeExcelFile(headers, rows, filename) {
 export function exportExcel(filtered, filename) {
   var STATUTS = {
     soumise: "Soumise", acceptee: "Approuvée", acceptee2: "Approuvée (Approbateur +)", validee: "Vérifiée",
-    commandee: "En commande", partiellement_traitee: "Partiellement complétée", traitee: "Traitée / Complétée",
+    commandee: "En commande", partiellement_traitee: "Partiellement reçue", traitee: "Traitée / Complétée",
     refusee: "Refusée", annulee: "Annulée",
   };
   var CATS = {

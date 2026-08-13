@@ -22,7 +22,7 @@ export const STATUSES = {
   acceptee2:             { label: "Approuvée (Approbateur +)", color: "#2563eb" },
   validee:               { label: "Vérifiée",               color: "#7c3aed" },
   commandee:             { label: "En commande",            color: "#ea580c" },
-  partiellement_traitee: { label: "Partiellement complétée", color: "#f59e0b" },
+  partiellement_traitee: { label: "Partiellement reçue", color: "#f59e0b" },
   traitee:               { label: "Traitée",                color: "#008c4a" },
   refusee:               { label: "Refusée",                color: "#b42318" },
   annulee:               { label: "Annulée",                color: "#78350f" },

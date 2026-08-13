@@ -272,6 +272,19 @@ export default function App() {
     }
   }
 
+  // Met à jour les items ET le statut en une seule fois, sans confirmation — utilisé quand le
+  // statut d'une demande d'achat découle automatiquement des cases commandé/reçu cochées par
+  // l'agent administratif ou le magasinier (pas une action délibérée à confirmer).
+  async function handleAutoStatus(reqId, updatedRows, newStatus, comment = "") {
+    try {
+      const updated = await api.actionRequest(reqId, { newStatus, comment, adminComment: "", by: user.name, updatedRows });
+      setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      if (selectedRequest?.id === reqId) setSelectedRequest(updated);
+    } catch (err) {
+      alert("Erreur : " + err.message);
+    }
+  }
+
   async function handleSaveAuthorizations(reqId, cpeAuth, ceAuth) {
     const req = requests.find((r) => r.id === reqId);
     if (!req) return;
@@ -491,6 +504,7 @@ export default function App() {
         onEdit={handleEdit}
         onCancel={handleCancelRequest}
         onUpdateItems={handleUpdateItems}
+        onAutoStatus={handleAutoStatus}
         onSaveAuthorizations={handleSaveAuthorizations}
         onSaveBudget={handleSaveBudget}
         onReactivate={handleReactivate}

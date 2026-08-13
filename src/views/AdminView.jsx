@@ -482,7 +482,7 @@ Cette action est immédiate. Cliquez sur « Enregistrer » pour confirmer.`)) {
                 { key: "acceptee2",             label: "Approuvée (Approbateur +)", color: "#2563eb" },
                 { key: "validee",               label: "Vérifiée",               color: "#7c3aed" },
                 { key: "commandee",             label: "En commande",            color: "#ea580c" },
-                { key: "partiellement_traitee", label: "Partiellement complétée", color: "#f59e0b" },
+                { key: "partiellement_traitee", label: "Partiellement reçue", color: "#f59e0b" },
                 { key: "traitee",               label: "Traitée",                color: "#008c4a" },
                 { key: "refusee",               label: "Refusée",                color: "#b42318" },
                 { key: "annulee",               label: "Annulée",                color: "#78350f" },

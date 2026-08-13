@@ -47,6 +47,36 @@ function fmtAuthLong(auth) {
   return parts.join(" — ");
 }
 
+// Numéro(s) de commande saisis par la vérificatrice/le vérificateur (formData.numerosCommande),
+// affichés dans la file du magasinier — ex. "Amazon — PO-12345; Costco — PO-67890".
+function fmtBonCommande(fd) {
+  if (!fd?.numerosCommande || fd.numerosCommande.length === 0) return "—";
+  return fd.numerosCommande.map(n => (n.provenance ? n.provenance + " — " : "") + n.numero).join("; ") || "—";
+}
+function fmtFournisseurPrincipal(fd) {
+  return (fd?.fournisseurPrincipal || "—") + (fd?.autreFournisseur ? " — " + fd.autreFournisseur : "");
+}
+
+// Recherche rapide dans la file du magasinier — cherche dans le bon de commande, la provenance
+// (compagnie) de chaque bon, le nom/la description/le prix unitaire des articles, le fournisseur
+// principal, et le titre (nom du projet).
+function matchesMagasinierSearch(r, term) {
+  if (!term) return true;
+  const t = term.toLowerCase();
+  const fd = r.formData || {};
+  if ((r.title || "").toLowerCase().includes(t)) return true;
+  if ((fd.fournisseurPrincipal || "").toLowerCase().includes(t)) return true;
+  if (Array.isArray(fd.numerosCommande) && fd.numerosCommande.some(n =>
+    (n.numero || "").toLowerCase().includes(t) || (n.provenance || "").toLowerCase().includes(t)
+  )) return true;
+  if (Array.isArray(fd._rows) && fd._rows.some(row =>
+    (row.nom || "").toLowerCase().includes(t) ||
+    (row.description || "").toLowerCase().includes(t) ||
+    String(row.prixUnitaire || "").toLowerCase().includes(t)
+  )) return true;
+  return false;
+}
+
 function buildTableHTML(headers, rows, title) {
   return (
     `<h3>${esc(title)}</h3>` +
@@ -74,6 +104,13 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   const [showTraiteesActivite, setShowTraiteesActivite] = useState(false);
   const [showTraiteesAchat, setShowTraiteesAchat] = useState(false);
   const [traiteesTab, setTraiteesTab] = useState("achat");
+  const [magasinierSearch, setMagasinierSearch] = useState("");
+
+  // File du magasinier (C2) : recherche rapide dans les demandes en attente uniquement —
+  // le reste de la vue (impression, export, demandes traitées) continue de porter sur la liste complète.
+  const magasinierFiltered = role === "C2"
+    ? filtered.filter(r => matchesMagasinierSearch(r, magasinierSearch))
+    : filtered;
 
   // Demandes traitées (file générique A/A2/B/C2/C3), séparées par type de demande
   // pour ne jamais mélanger achat / activité / réquisition dans un même tableau.
@@ -370,25 +407,40 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
               🖨️ Imprimer
             </button>
           </div>
-          <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: 20 }}>
+          <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: role === "C2" ? 10 : 20 }}>
             {filtered.length} demande(s) en attente
           </p>
+          {role === "C2" && (
+            <div style={{ marginBottom: 16, maxWidth: 420 }}>
+              <input
+                style={S.input}
+                placeholder="Recherche rapide : bon de commande, compagnie, produit, description, prix, fournisseur, projet…"
+                value={magasinierSearch}
+                onChange={(e) => setMagasinierSearch(e.target.value)}
+              />
+            </div>
+          )}
           {filtered.length === 0 ? (
             <p style={{ color: COLORS.gris }}>Aucune demande en attente.</p>
+          ) : magasinierFiltered.length === 0 ? (
+            <p style={{ color: COLORS.gris }}>Aucun résultat pour cette recherche.</p>
           ) : (
             <div className="s-table-wrap">
             <table style={S.table}>
               <thead>
                 <tr>
-                  {["#", "Type", "Titre", "Demandeur", "Date", "Actions"].map((h) => (
+                  {(role === "C2"
+                    ? ["#", "Type", "Titre", "Demandeur", "Date", "Bon de commande", "Fournisseur", "Actions"]
+                    : ["#", "Type", "Titre", "Demandeur", "Date", "Actions"]
+                  ).map((h) => (
                     <th key={h} style={S.th}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r, i) => (
+                {magasinierFiltered.map((r, i) => (
                   <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                    <td style={S.td}>{r.id}</td>
+                    <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{r.requestNumber || r.id}</td>
                     <td style={S.td}><span style={{ fontSize: 12 }}>{REQUEST_TYPES[r.type]}</span></td>
                     <td style={S.td}>
                       <strong>{r.title}</strong>
@@ -398,6 +450,12 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
                     </td>
                     <td style={S.td}>{r.authorName}</td>
                     <td style={S.td}>{r.date}</td>
+                    {role === "C2" && (
+                      <>
+                        <td style={{ ...S.td, fontSize: 12 }}>{fmtBonCommande(r.formData)}</td>
+                        <td style={{ ...S.td, fontSize: 12 }}>{r.type === "achat" ? fmtFournisseurPrincipal(r.formData) : "—"}</td>
+                      </>
+                    )}
                     <td style={S.td}>{actionButtons(r)}</td>
                   </tr>
                 ))}
