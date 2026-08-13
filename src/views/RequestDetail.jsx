@@ -23,12 +23,19 @@ function passionSummary(fd) {
   }).join(", ");
 }
 
-export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onReactivate, workflowConfig }) {
+export function RequestDetail({ request, user, onAction, onBack, onEdit, onCancel, onUpdateItems, onSaveAuthorizations, onSaveBudget, onReactivate, workflowConfig }) {
   const [comment, setComment] = useState("");
   const [adminComment, setAdminComment] = useState("");
   const [cpeLocal, setCpeLocal] = useState(request.formData?.cpeAuth || { decision: null, date: "", comment: "" });
   const [ceLocal,  setCeLocal]  = useState(request.formData?.ceAuth  || { decision: null, date: "", comment: "" });
   const [savingAuth, setSavingAuth] = useState(false);
+
+  // Provenance et code budgétaires (facultatifs) — l'approbateur, l'approbateur +, le
+  // vérificateur ou l'agent administratif peuvent les inscrire à tout moment du traitement
+  // d'une demande d'activité, de sortie ou de voyage.
+  const [provenanceBudgetaire, setProvenanceBudgetaire] = useState(request.formData?.provenanceBudgetaire || "");
+  const [codeBudgetaire,       setCodeBudgetaire]       = useState(request.formData?.codeBudgetaire || "");
+  const [savingBudget, setSavingBudget] = useState(false);
 
   // Numéros de commande (facultatifs) — saisis par la vérificatrice ou le vérificateur au
   // moment de vérifier une demande d'achat, un par provenance si les produits viennent de
@@ -470,6 +477,54 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
             </div>
           </div>
         )}
+
+        {/* ── Provenance / code budgétaires (facultatif — activité, sortie, voyage) ── */}
+        {request.type === "activite" && (() => {
+          const canEditBudget = !isTerminated && (canActRole("A") || canActRole("A2") || canActRole("B") || canActRole("C1") || isAdmin);
+          const hasBudgetData = !!(request.formData?.provenanceBudgetaire || request.formData?.codeBudgetaire);
+          if (!canEditBudget && !hasBudgetData) return null;
+          return (
+            <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 20, marginTop: 4 }}>
+              <h3 style={{ margin: "0 0 14px", fontSize: 15, fontWeight: 700 }}>Informations budgétaires <span style={{ fontWeight: 400, fontSize: 12, color: COLORS.gris }}>(facultatif)</span></h3>
+              {canEditBudget ? (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 14 }} className="s-grid2">
+                    <div>
+                      <label style={S.label}>Provenance budgétaire</label>
+                      <input style={S.input} value={provenanceBudgetaire} onChange={(e) => setProvenanceBudgetaire(e.target.value)} placeholder="Ex. : Budget école, Budget passion…" />
+                    </div>
+                    <div>
+                      <label style={S.label}>Code budgétaire</label>
+                      <input style={S.input} value={codeBudgetaire} onChange={(e) => setCodeBudgetaire(e.target.value)} placeholder="Ex. : 12-345-6789" />
+                    </div>
+                  </div>
+                  <button
+                    style={{ ...btnVert, opacity: savingBudget ? 0.7 : 1, cursor: savingBudget ? "not-allowed" : "pointer" }}
+                    disabled={savingBudget}
+                    onClick={async () => {
+                      setSavingBudget(true);
+                      try { await onSaveBudget(request.id, provenanceBudgetaire, codeBudgetaire); }
+                      finally { setSavingBudget(false); }
+                    }}
+                  >
+                    {savingBudget ? "Sauvegarde…" : "Sauvegarder les informations budgétaires"}
+                  </button>
+                </>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="s-grid2">
+                  <div>
+                    <div style={FIELD_LABEL}>Provenance budgétaire</div>
+                    <div style={{ fontSize: 14 }}>{request.formData.provenanceBudgetaire || "—"}</div>
+                  </div>
+                  <div>
+                    <div style={FIELD_LABEL}>Code budgétaire</div>
+                    <div style={{ fontSize: 14 }}>{request.formData.codeBudgetaire || "—"}</div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── Autorisations CPE / CÉ (activité seulement) ── */}
         {request.type === "activite" && (() => {

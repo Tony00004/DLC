@@ -221,6 +221,20 @@ export default function App() {
     }
   }
 
+  async function handleSaveBudget(reqId, provenanceBudgetaire, codeBudgetaire) {
+    const req = requests.find((r) => r.id === reqId);
+    if (!req) return;
+    try {
+      const updated = await api.updateRequest(reqId, {
+        formData: { ...req.formData, provenanceBudgetaire, codeBudgetaire },
+      });
+      setRequests((prev) => prev.map((r) => r.id === reqId ? updated : r));
+      if (selectedRequest?.id === reqId) setSelectedRequest(updated);
+    } catch (err) {
+      alert("Erreur lors de la sauvegarde des informations budgétaires : " + err.message);
+    }
+  }
+
   function handleEdit(request, nextStatus, comment) {
     setEditContext({ request, nextStatus, comment });
     if (request.type === "activite") {
@@ -411,6 +425,7 @@ export default function App() {
         onCancel={handleCancelRequest}
         onUpdateItems={handleUpdateItems}
         onSaveAuthorizations={handleSaveAuthorizations}
+        onSaveBudget={handleSaveBudget}
         onReactivate={handleReactivate}
         workflowConfig={workflowConfig}
       />;
