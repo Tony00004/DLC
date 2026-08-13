@@ -104,7 +104,23 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   const [showTraiteesActivite, setShowTraiteesActivite] = useState(false);
   const [showTraiteesAchat, setShowTraiteesAchat] = useState(false);
   const [traiteesTab, setTraiteesTab] = useState("achat");
+  const [pendingTab, setPendingTab] = useState("achat");
   const [magasinierSearch, setMagasinierSearch] = useState("");
+
+  // Approbateur / Approbateur + / Vérificateur : les demandes en attente sont séparées par
+  // catégorie sous forme d'onglets, comme pour les demandes traitées — pour ne jamais mélanger
+  // achat de matériel, activités et sorties, et réquisition interne dans un même tableau.
+  const showPendingTabs = ["A", "A2", "B"].includes(role);
+  const PENDING_TABS = [
+    ["achat", "Achat de matériel"],
+    ["activite", "Activités et sorties"],
+    ["requisition", "Réquisition interne"],
+  ];
+  const pendingParType = {
+    achat: filtered.filter(r => r.type === "achat"),
+    activite: filtered.filter(r => r.type === "activite"),
+    requisition: filtered.filter(r => r.type === "requisition"),
+  };
 
   // File du magasinier (C2) : recherche rapide dans les demandes en attente uniquement —
   // le reste de la vue (impression, export, demandes traitées) continue de porter sur la liste complète.
@@ -407,61 +423,89 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
               🖨️ Imprimer
             </button>
           </div>
-          <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: role === "C2" ? 10 : 20 }}>
+          <p style={{ color: COLORS.gris, fontSize: 13, marginBottom: role === "C2" || showPendingTabs ? 10 : 20 }}>
             {filtered.length} demande(s) en attente
           </p>
-          {role === "C2" && (
-            <div style={{ marginBottom: 16, maxWidth: 420 }}>
-              <input
-                style={S.input}
-                placeholder="Recherche rapide : bon de commande, compagnie, produit, description, prix, fournisseur, projet…"
-                value={magasinierSearch}
-                onChange={(e) => setMagasinierSearch(e.target.value)}
-              />
-            </div>
-          )}
-          {filtered.length === 0 ? (
-            <p style={{ color: COLORS.gris }}>Aucune demande en attente.</p>
-          ) : magasinierFiltered.length === 0 ? (
-            <p style={{ color: COLORS.gris }}>Aucun résultat pour cette recherche.</p>
+
+          {showPendingTabs ? (
+            <>
+              <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                {PENDING_TABS.map(([key, tlabel]) => {
+                  const active = pendingTab === key;
+                  const count = pendingParType[key].length;
+                  return (
+                    <button key={key}
+                      style={{
+                        padding: "7px 14px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+                        fontWeight: active ? 700 : 500,
+                        background: active ? COLORS.bleu : "#fff",
+                        color: active ? "#fff" : COLORS.noir,
+                        border: `1px solid ${active ? COLORS.bleu : "#d9dee5"}`,
+                      }}
+                      onClick={() => setPendingTab(key)}>
+                      {tlabel} <span style={{ opacity: 0.75, fontWeight: 500 }}>({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {renderCategoryPendingTable(pendingParType[pendingTab])}
+            </>
           ) : (
-            <div className="s-table-wrap">
-            <table style={S.table}>
-              <thead>
-                <tr>
-                  {(role === "C2"
-                    ? ["#", "Type", "Titre", "Demandeur", "Date", "Bon de commande", "Fournisseur", "Actions"]
-                    : ["#", "Type", "Titre", "Demandeur", "Date", "Actions"]
-                  ).map((h) => (
-                    <th key={h} style={S.th}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {magasinierFiltered.map((r, i) => (
-                  <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
-                    <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{r.requestNumber || r.id}</td>
-                    <td style={S.td}><span style={{ fontSize: 12 }}>{REQUEST_TYPES[r.type]}</span></td>
-                    <td style={S.td}>
-                      <strong>{r.title}</strong>
-                      {r.type === "requisition" && r.formData?.drawing?.length > 0 && (
-                        <span title="Schéma joint à la demande" style={{ marginLeft: 6, fontSize: 12, background: "#e0f2fe", color: "#0369a1", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>📐 Schéma</span>
-                      )}
-                    </td>
-                    <td style={S.td}>{r.authorName}</td>
-                    <td style={S.td}>{r.date}</td>
-                    {role === "C2" && (
-                      <>
-                        <td style={{ ...S.td, fontSize: 12 }}>{fmtBonCommande(r.formData)}</td>
-                        <td style={{ ...S.td, fontSize: 12 }}>{r.type === "achat" ? fmtFournisseurPrincipal(r.formData) : "—"}</td>
-                      </>
-                    )}
-                    <td style={S.td}>{actionButtons(r)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+            <>
+              {role === "C2" && (
+                <div style={{ marginBottom: 16, maxWidth: 420 }}>
+                  <input
+                    style={S.input}
+                    placeholder="Recherche rapide : bon de commande, compagnie, produit, description, prix, fournisseur, projet…"
+                    value={magasinierSearch}
+                    onChange={(e) => setMagasinierSearch(e.target.value)}
+                  />
+                </div>
+              )}
+              {filtered.length === 0 ? (
+                <p style={{ color: COLORS.gris }}>Aucune demande en attente.</p>
+              ) : magasinierFiltered.length === 0 ? (
+                <p style={{ color: COLORS.gris }}>Aucun résultat pour cette recherche.</p>
+              ) : (
+                <div className="s-table-wrap">
+                <table style={S.table}>
+                  <thead>
+                    <tr>
+                      {(role === "C2"
+                        ? ["#", "Type", "Titre", "Demandeur", "Date", "Bon de commande", "Fournisseur", "Actions"]
+                        : ["#", "Type", "Titre", "Demandeur", "Date", "Actions"]
+                      ).map((h) => (
+                        <th key={h} style={S.th}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {magasinierFiltered.map((r, i) => (
+                      <tr key={r.id} style={{ background: i % 2 === 0 ? "#fff" : "#fafafa" }}>
+                        <td style={{ ...S.td, fontFamily: "monospace", fontSize: 12 }}>{r.requestNumber || r.id}</td>
+                        <td style={S.td}><span style={{ fontSize: 12 }}>{REQUEST_TYPES[r.type]}</span></td>
+                        <td style={S.td}>
+                          <strong>{r.title}</strong>
+                          {r.type === "requisition" && r.formData?.drawing?.length > 0 && (
+                            <span title="Schéma joint à la demande" style={{ marginLeft: 6, fontSize: 12, background: "#e0f2fe", color: "#0369a1", borderRadius: 4, padding: "1px 5px", fontWeight: 700 }}>📐 Schéma</span>
+                          )}
+                        </td>
+                        <td style={S.td}>{r.authorName}</td>
+                        <td style={S.td}>{r.date}</td>
+                        {role === "C2" && (
+                          <>
+                            <td style={{ ...S.td, fontSize: 12 }}>{fmtBonCommande(r.formData)}</td>
+                            <td style={{ ...S.td, fontSize: 12 }}>{r.type === "achat" ? fmtFournisseurPrincipal(r.formData) : "—"}</td>
+                          </>
+                        )}
+                        <td style={S.td}>{actionButtons(r)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+              )}
+            </>
           )}
 
           {/* ── Demandes traitées, séparées par type sous forme de sous-onglets ── */}
