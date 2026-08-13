@@ -332,7 +332,7 @@ export function FormActivite({ user, onSubmit, onBack, allUsers, initialData, ed
           <div style={{ marginBottom: 16 }}>
             <label style={S.label}>Niveau(x) concerné(s)<span style={{ color: COLORS.rouge }}> *</span></label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 16px" }}>
-              {[...niveaux, "Autre"].map((n) => (
+              {[...niveaux.filter((n) => n !== "Autre"), "Autre"].map((n) => (
                 <label key={n} style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", fontSize: 14 }}>
                   <input type="checkbox" checked={form.niveauxConcernes.includes(n)} onChange={() => toggleCheck("niveauxConcernes", n)} />
                   {n}
