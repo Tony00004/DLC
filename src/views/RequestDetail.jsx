@@ -217,7 +217,9 @@ export function RequestDetail({ request, user, onAction, onBack, onEdit, onCance
                   {[
                     ["Achat par moi-même", request.formData.achatPersonnel],
                     ["Conférencier / Conférencière", request.formData.conferencier],
-                    ["Activité parascolaire", request.formData.parascolaire],
+                    ["Activité parascolaire", request.formData.parascolaire === "Oui" && request.formData.nomActiviteParascolaire
+                      ? "Oui — " + request.formData.nomActiviteParascolaire
+                      : request.formData.parascolaire],
                     ["Budget concentration (passion)", request.formData.budgetPassion === "Oui"
                       ? "Oui" + (passionSummary(request.formData) ? " — " + passionSummary(request.formData) : "")
                       : request.formData.budgetPassion],

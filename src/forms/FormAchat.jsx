@@ -40,6 +40,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
   const [achatPersonnel,setAchatPersonnel]= useState(fd.achatPersonnel || "");
   const [conferencier,  setConferencier]  = useState(fd.conferencier || "");
   const [parascolaire,  setParascolaire]  = useState(fd.parascolaire || "");
+  const [nomActiviteParascolaire, setNomActiviteParascolaire] = useState(fd.nomActiviteParascolaire || "");
   const [budgetPassion, setBudgetPassion] = useState(fd.budgetPassion || "");
   const [passionTypes,     setPassionTypes]     = useState(fd.passionTypes || []);
   const [passionSubChoices, setPassionSubChoices] = useState(fd.passionSubChoices || {});
@@ -106,6 +107,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
     if (!achatPersonnel) { setErreur("Veuillez répondre : achat par moi-même (Oui/Non)."); return; }
     if (!conferencier)   { setErreur("Veuillez répondre : lien avec un conférencier (Oui/Non)."); return; }
     if (!parascolaire)   { setErreur("Veuillez répondre : activité parascolaire (Oui/Non)."); return; }
+    if (parascolaire === "Oui" && !nomActiviteParascolaire.trim()) { setErreur("Veuillez indiquer le nom de l'activité parascolaire."); return; }
     if (!budgetPassion)  { setErreur("Veuillez répondre : budget passion (Oui/Non)."); return; }
 
     // Au moins un article valide
@@ -139,7 +141,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
       directionResponsable: direction,
       fournisseurPrincipal: fournisseur, autreFournisseur,
       natureActivite: nature,
-      achatPersonnel, conferencier, parascolaire, budgetPassion, passionTypes, passionSubChoices, passionAutres,
+      achatPersonnel, conferencier, parascolaire, nomActiviteParascolaire, budgetPassion, passionTypes, passionSubChoices, passionAutres,
       total: total.toFixed(2) + " $",
       _rows: rows,
       _totalNum: total,
@@ -284,7 +286,13 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
               warning: formMessages.achatPersonnelWarning },
             { label: "Demande en lien avec un conférencier ou une conférencière", val: conferencier, set: setConferencier,
               warning: formMessages.conferencierWarning },
-            { label: "Demande en lien avec une activité parascolaire", val: parascolaire, set: setParascolaire },
+            { label: "Demande en lien avec une activité parascolaire", val: parascolaire, set: setParascolaire,
+              extra: parascolaire === "Oui" && (
+                <div>
+                  <label style={S.label}>Nom de l'activité<span style={{ color: COLORS.rouge }}> *</span></label>
+                  <input style={S.input} value={nomActiviteParascolaire} onChange={(e) => setNomActiviteParascolaire(e.target.value)} />
+                </div>
+              ) },
             { label: "Demande en lien avec le budget d'une concentration (passion)", val: budgetPassion, set: setBudgetPassion,
               extra: budgetPassion === "Oui" && (
                 <PassionPicker
@@ -405,7 +413,7 @@ export function FormAchat({ user, onSubmit, onBack, allUsers, initialData, editM
             onClick={() => {
               setDateSouhaitee(""); setMatiere(""); setMatiereArts(""); setAutreArt(""); setAutreMatiere("");
               setNiveau(""); setAutreNiveau(""); setDirection(""); setFournisseur(""); setAutreFournisseur(""); setNature("");
-              setAchatPersonnel(""); setConferencier(""); setParascolaire(""); setBudgetPassion("");
+              setAchatPersonnel(""); setConferencier(""); setParascolaire(""); setNomActiviteParascolaire(""); setBudgetPassion("");
               setPassionTypes([]); setPassionSubChoices({}); setPassionAutres("");
               setRows([{ id: Date.now(), qty: "", nom: "", description: "", numero: "", lien: "", prixUnitaire: "", soustotal: "", sansTaxe: false }]);
               setErreur("");
