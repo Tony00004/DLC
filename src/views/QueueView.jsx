@@ -107,6 +107,14 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
   const [pendingTab, setPendingTab] = useState("achat");
   const [magasinierSearch, setMagasinierSearch] = useState("");
 
+  // Au moment d'imprimer, on laisse choisir d'inclure les demandes en attente
+  // et/ou les demandes déjà traitées (tous les rôles : Approbateur, Approbateur +,
+  // Vérificateur, Agent administratif, Magasinier, Concierge).
+  const canChoosePrintSections = true;
+  const [printModal, setPrintModal] = useState(null); // null | "achat" | "activite" | "generic"
+  const [printIncludePending, setPrintIncludePending] = useState(true);
+  const [printIncludeTraitees, setPrintIncludeTraitees] = useState(true);
+
   // Approbateur / Approbateur + / Vérificateur : les demandes en attente sont séparées par
   // catégorie sous forme d'onglets, comme pour les demandes traitées — pour ne jamais mélanger
   // achat de matériel, activités et sorties, et réquisition interne dans un même tableau.
@@ -281,14 +289,14 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
     ];
   }
 
-  function handlePrintActivites() {
+  function handlePrintActivites({ includePending = true, includeTraitees = true } = {}) {
     const activiteHeaders = ["Nº", "Titre", "Type", "Demandeur", "Responsable(s)", "Date demande", "Date(s)/heure(s) prévues", "Description", "Niveaux", "Matières", "Groupes", "Direction responsable", "Concentration (passion)", "Obligatoire", "Transport", "Coût élève", "Coût adulte", "Coût libération", "Coût transport", "Autres coûts", "Total", "Statut", "Approuvé CPE", "Approuvé CÉ"];
 
-    const html =
+    let html =
       `<h2>Demandes d'activités et de sorties — ${esc(roleDisplay)}</h2>` +
-      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>` +
-      buildTableHTML(activiteHeaders, activitesPendantes.map(activiteRow), `Demandes en attente (${activitesPendantes.length})`) +
-      buildTableHTML(activiteHeaders, activitesTraitees.map(activiteRow), `Demandes traitées (${activitesTraitees.length})`);
+      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>`;
+    if (includePending) html += buildTableHTML(activiteHeaders, activitesPendantes.map(activiteRow), `Demandes en attente (${activitesPendantes.length})`);
+    if (includeTraitees) html += buildTableHTML(activiteHeaders, activitesTraitees.map(activiteRow), `Demandes traitées (${activitesTraitees.length})`);
 
     printHTML(html, { landscape: true, title: "Demandes d'activités et de sorties — " + roleDisplay });
   }
@@ -301,14 +309,14 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
     ];
   }
 
-  function handlePrintAchats() {
+  function handlePrintAchats({ includePending = true, includeTraitees = true } = {}) {
     const achatHeaders = ["Nº", "Titre", "Demandeur", "Date", "Statut", "Prix total"];
 
-    const html =
+    let html =
       `<h2>Demandes d'achat de matériel — ${esc(roleDisplay)}</h2>` +
-      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>` +
-      buildTableHTML(achatHeaders, achatsPendants.map(achatRow), `Demandes en attente (${achatsPendants.length})`) +
-      buildTableHTML(achatHeaders, achatsTraitees.map(achatRow), `Demandes traitées (${achatsTraitees.length})`);
+      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>`;
+    if (includePending) html += buildTableHTML(achatHeaders, achatsPendants.map(achatRow), `Demandes en attente (${achatsPendants.length})`);
+    if (includeTraitees) html += buildTableHTML(achatHeaders, achatsTraitees.map(achatRow), `Demandes traitées (${achatsTraitees.length})`);
 
     printHTML(html, { landscape: true, title: "Demandes d'achat de matériel — " + roleDisplay });
   }
@@ -323,17 +331,34 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
     ];
   }
 
-  function handlePrintGeneric() {
+  function handlePrintGeneric({ includePending = true, includeTraitees = true } = {}) {
     const headersPending  = ["Nº", "Type", "Titre", "Demandeur", "Date", "Montant", "Statut"];
     const headersTraitees = ["Nº", "Type", "Titre", "Demandeur", "Date action", "Montant", "Statut"];
 
-    const html =
+    let html =
       `<h2>File d'attente — ${esc(roleDisplay)}</h2>` +
-      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>` +
-      buildTableHTML(headersPending, filtered.map(r => genericRow(r, "pending")), `Demandes en attente (${filtered.length})`) +
-      buildTableHTML(headersTraitees, traitees.map(r => genericRow(r, "action")), `Demandes traitées (${traitees.length})`);
+      `<p>Imprimé le ${esc(new Date().toLocaleDateString("fr-CA"))}</p>`;
+    if (includePending) html += buildTableHTML(headersPending, filtered.map(r => genericRow(r, "pending")), `Demandes en attente (${filtered.length})`);
+    if (includeTraitees) html += buildTableHTML(headersTraitees, traitees.map(r => genericRow(r, "action")), `Demandes traitées (${traitees.length})`);
 
     printHTML(html, { landscape: true, title: "File d'attente — " + roleDisplay });
+  }
+
+  // Ouvre le petit sélecteur « en attente / traitées » avant d'imprimer, pour les rôles
+  // concernés (Approbateur, Approbateur +, Vérificateur, Agent administratif). Les autres
+  // rôles impriment directement les deux sections, comme avant.
+  function requestPrint(context, directFn) {
+    if (!canChoosePrintSections) { directFn(); return; }
+    setPrintIncludePending(true);
+    setPrintIncludeTraitees(true);
+    setPrintModal(context);
+  }
+  function confirmPrint() {
+    const opts = { includePending: printIncludePending, includeTraitees: printIncludeTraitees };
+    if (printModal === "achat") handlePrintAchats(opts);
+    else if (printModal === "activite") handlePrintActivites(opts);
+    else if (printModal === "generic") handlePrintGeneric(opts);
+    setPrintModal(null);
   }
 
   return (
@@ -371,7 +396,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           <div style={S.card} className="s-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Demandes d'activités et de sorties</h2>
-              <button onClick={handlePrintActivites} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              <button onClick={() => requestPrint("activite", handlePrintActivites)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
                 🖨️ Imprimer
               </button>
             </div>
@@ -393,7 +418,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
           <div style={S.card} className="s-card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }} className="s-btn-row">
               <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>Demandes d'achat de matériel</h2>
-              <button onClick={handlePrintAchats} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              <button onClick={() => requestPrint("achat", handlePrintAchats)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
                 🖨️ Imprimer
               </button>
             </div>
@@ -425,7 +450,7 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
             <h2 style={{ margin: "0 0 4px", fontSize: 20, fontWeight: 700 }}>
               File d'attente — {roleDisplay}
             </h2>
-            <button onClick={handlePrintGeneric} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+            <button onClick={() => requestPrint("generic", handlePrintGeneric)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 16px", background: COLORS.bleu, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
               🖨️ Imprimer
             </button>
           </div>
@@ -578,6 +603,42 @@ export function QueueView({ role, label, requests, allRequests, user, onAction, 
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Choix des sections à imprimer (en attente / traitées) ── */}
+      {printModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }} onClick={() => setPrintModal(null)}>
+          <div style={{ ...S.card, maxWidth: 400, width: "90%", marginBottom: 0 }} className="s-card" onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ ...S.sectionTitle, margin: 0, border: "none", padding: 0, fontSize: 15 }}>🖨️ Que voulez-vous imprimer ?</h3>
+              <button style={{ ...S.btn, padding: "4px 10px" }} onClick={() => setPrintModal(null)}>✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14 }}>
+                <input type="checkbox" checked={printIncludePending} onChange={e => setPrintIncludePending(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: "pointer" }} />
+                Demandes en attente
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14 }}>
+                <input type="checkbox" checked={printIncludeTraitees} onChange={e => setPrintIncludeTraitees(e.target.checked)}
+                  style={{ width: 16, height: 16, cursor: "pointer" }} />
+                Demandes traitées
+              </label>
+            </div>
+            {!printIncludePending && !printIncludeTraitees && (
+              <p style={{ color: COLORS.rouge, fontSize: 12, marginTop: -12, marginBottom: 14 }}>Sélectionnez au moins une section à imprimer.</p>
+            )}
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                style={{ ...S.btnPrimary, opacity: (!printIncludePending && !printIncludeTraitees) ? 0.5 : 1, cursor: (!printIncludePending && !printIncludeTraitees) ? "not-allowed" : "pointer" }}
+                disabled={!printIncludePending && !printIncludeTraitees}
+                onClick={confirmPrint}>
+                🖨️ Imprimer
+              </button>
+              <button style={S.btn} onClick={() => setPrintModal(null)}>Annuler</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
